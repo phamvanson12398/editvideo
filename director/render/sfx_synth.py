@@ -161,7 +161,6 @@ def boing(d=0.7):
 
 
 def glitch(d=0.45):
-    seg = []
     n = int(SR * d)
     out = np.zeros(n, np.float32)
     pos = 0

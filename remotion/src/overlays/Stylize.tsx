@@ -112,7 +112,8 @@ const One: React.FC<{e: Effect; t: number; W: number; H: number; frame: number}>
       return <AbsoluteFill style={{boxShadow: `inset 0 0 ${u * 0.12}px ${u * 0.03}px rgba(255,0,0,${(0.5 + 0.5 * Math.sin(t * 10)) * env})`}} />;
     case 'letterbox': {
       const ratio = P.ratio ?? 2.39;
-      const bar = Math.max(0, (H - W / ratio) / 2) * easeInOut(env);
+      // on vertical frames a true 2.39 band would be tiny: use a cinematic-feel bar instead
+      const bar = (H > W ? H * 0.09 : Math.max(0, (H - W / ratio) / 2)) * easeInOut(env);
       return (
         <AbsoluteFill>
           <div style={{position: 'absolute', left: 0, top: 0, width: W, height: bar, background: '#000'}} />

@@ -1,7 +1,6 @@
 """Director Studio: a small local web UI (FastAPI) to upload a video, describe the style, watch progress,
 compare variants and revise by chat."""
 
-from __future__ import annotations
 
 import json
 import threading

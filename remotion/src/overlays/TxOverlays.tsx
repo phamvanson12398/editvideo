@@ -54,7 +54,7 @@ const One: React.FC<{e: Effect; t: number; W: number; H: number}> = ({e, t, W, H
           background: `linear-gradient(${110 + 60 * p}deg, rgba(255,120,60,.0) 10%, rgba(255,150,80,.9) 40%, rgba(255,220,150,.7) 55%, rgba(255,80,120,0) 85%)`}} />
       );
     case 'ink_bleed': {
-      const r = easeInOut(k) * Math.hypot(W, H) * 0.75;
+      const r = Math.pow(k, 1.6) * Math.hypot(W, H) * 0.6;
       const blobs = [0, 1, 2, 3, 4, 5].map((i) => ({x: (0.2 + 0.6 * rand(i * 2.2)) * W, y: (0.2 + 0.6 * rand(i * 5.3)) * H, s: 0.6 + 0.5 * rand(i)}));
       return (
         <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>

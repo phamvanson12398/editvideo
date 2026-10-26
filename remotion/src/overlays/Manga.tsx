@@ -102,10 +102,10 @@ const One: React.FC<{e: Effect; t: number; W: number; H: number; a: A}> = ({e, t
       return <div style={{opacity: env, position: 'absolute', inset: 0, transform: `translateY(${p * s * 0.25}px)`}}><SweatDrop x={a.x + s * 0.4} y={a.y - s * 0.6} s={s * 0.45} /></div>;
     case 'blush':
       return (
-        <AbsoluteFill style={{opacity: 0.75 * env}}>
+        <AbsoluteFill style={{opacity: env}}>
           {[-1, 1].map((d) => (
-            <div key={d} style={{position: 'absolute', left: a.x + d * s * 0.28 - s * 0.14, top: a.y + s * 0.08, width: s * 0.28, height: s * 0.12, borderRadius: '50%',
-              background: 'radial-gradient(ellipse, rgba(255,90,130,.85), rgba(255,90,130,0) 70%)'}} />
+            <div key={d} style={{position: 'absolute', left: a.x + d * s * 0.3 - s * 0.18, top: a.y + s * 0.06, width: s * 0.36, height: s * 0.16, borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(255,70,120,.95), rgba(255,70,120,0) 72%)'}} />
           ))}
         </AbsoluteFill>
       );

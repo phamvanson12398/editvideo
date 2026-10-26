@@ -91,7 +91,7 @@ export const ClipLayer: React.FC<Props> = ({plan, clip, outputId, tin, tout}) =>
         const k2 = faces[1] ? [{t: 0, cx: faces[1].x + faces[1].w / 2, cy: faces[1].y + faces[1].h / 2, zoom: 1.2}] : [{t: 0, cx: 0.5, cy: 0.5, zoom: 1.4}];
         content = (
           <>
-            <div style={{position: 'absolute', ...b1, left: b1.x, top: b1.y, overflow: 'hidden'}}>{video(coverView(sw, sh, {...b1, x: 0, y: 0}, k1, tClip), 'a')}</div>
+            <div style={{position: 'absolute', left: b1.x, top: b1.y, width: b1.w, height: b1.h, overflow: 'hidden'}}>{video(coverView(sw, sh, {...b1, x: 0, y: 0}, k1, tClip), 'a')}</div>
             <div style={{position: 'absolute', left: b2.x, top: b2.y, width: b2.w, height: b2.h, overflow: 'hidden'}}>{video(coverView(sw, sh, {...b2, x: 0, y: 0}, k2, tClip), 'b')}</div>
             <div style={{position: 'absolute', left: vert ? 0 : W / 2 - 3, top: vert ? H / 2 - 3 : 0, width: vert ? W : 6, height: vert ? 6 : H, background: '#fff'}} />
           </>

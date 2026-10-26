@@ -21,8 +21,6 @@ from .schema import (
     CaptionWord,
     Clip,
     ClipReframe,
-    DraftEffect,
-    DraftSfx,
     EditPlan,
     Effect,
     MusicCue,
