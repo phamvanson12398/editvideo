@@ -78,6 +78,12 @@ def create_app(out_dir: Path):
     def index():
         return (STATIC / "index.html").read_text(encoding="utf-8")
 
+    @app.get("/api/config")
+    def config():
+        from ..pipeline import load_config
+
+        return load_config()
+
     @app.get("/api/presets")
     def presets():
         return list_presets()
@@ -98,12 +104,14 @@ def create_app(out_dir: Path):
     @app.post("/api/edit")
     def edit(video: str = Form(...), command: str = Form(""), frames: str = Form(""), preset: str = Form(""),
              variants: int = Form(1), use_llm: str = Form("auto"), draft: bool = Form(False), critic: int = Form(-1),
-             text_lang: str = Form("auto"), fast: bool = Form(False)):
+             text_lang: str = Form("auto"), fast: bool = Form(False),
+             sfx_volume: float = Form(-1), music_volume: float = Form(-1)):
         if not Path(video).exists():
             raise HTTPException(404, "không thấy video")
         opt = JobOptions(
             command=command, frames=[f.strip() for f in frames.split(",") if f.strip()] or None, preset=preset or None,
             out_dir=out_dir, draft=draft, variants=max(1, min(3, variants)), critic_rounds=None if critic < 0 else critic, fast=fast,
+            sfx_volume=None if sfx_volume < 0 else sfx_volume, music_volume=None if music_volume < 0 else music_volume,
             use_llm={"on": True, "off": False}.get(use_llm), text_language=None if text_lang == "auto" else text_lang,
         )
         job = Job(id=uuid.uuid4().hex[:8], kind="edit", params={"video": video, "command": command})

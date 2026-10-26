@@ -36,6 +36,9 @@ class JobOptions:
     use_llm: bool | None = None  # None = auto (when an API key is configured)
     critic_rounds: int | None = None  # None = auto: 1 round for outputs up to 3 minutes, 0 for longer
     fast: bool = False  # 720p output: roughly twice as fast to render
+    sfx_volume: float | None = None  # % (None = cau_hinh.json / style default 50)
+    music_volume: float | None = None
+    bgm_volume: float | None = None
     variants: int = 1
     genre: str | None = None
     whisper_model: str | None = None
@@ -78,6 +81,34 @@ def _ref_dir(opt: JobOptions) -> Path:
     return Path(opt.out_dir) / "jobs" / f"ref_{ref.stem}"
 
 
+CONFIG_FILE = Path(__file__).resolve().parents[1] / "cau_hinh.json"
+
+
+def load_config() -> dict:
+    """User defaults from cau_hinh.json (repo root); missing/broken file = built-in defaults."""
+    try:
+        return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        warn(f"Không đọc được {CONFIG_FILE.name} ({e}), dùng mặc định.")
+        return {}
+
+
+def apply_config(opt: JobOptions) -> None:
+    cfg = load_config()
+    if opt.sfx_volume is None and "am_luong_tieng_dong" in cfg:
+        opt.sfx_volume = float(cfg["am_luong_tieng_dong"])
+    if opt.music_volume is None and "am_luong_nhac_them" in cfg:
+        opt.music_volume = float(cfg["am_luong_nhac_them"])
+    if opt.bgm_volume is None and "am_luong_nhac_goc" in cfg:
+        opt.bgm_volume = float(cfg["am_luong_nhac_goc"])
+    if not opt.text_language and cfg.get("ngon_ngu_chu") not in (None, "", "auto"):
+        opt.text_language = str(cfg["ngon_ngu_chu"])
+    if not opt.fast and cfg.get("dung_nhanh_720p"):
+        opt.fast = True
+
+
 def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
     from .style.presets import get_preset
 
@@ -98,6 +129,14 @@ def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
         style.frames = opt.frames
     if opt.text_language and opt.text_language != "auto":
         style.text_language = opt.text_language
+    # volumes: config / options give the baseline, an explicit percentage in the command wins
+    said_sfx = "sfx_volume" in str(opt.command) or any(k in opt.command.lower() for k in ("tiếng động", "sfx", "hiệu ứng âm thanh"))
+    if opt.sfx_volume is not None and not said_sfx:
+        style.audio.sfx_volume = opt.sfx_volume
+    if opt.music_volume is not None and "nhạc" not in opt.command.lower():
+        style.audio.music_volume = opt.music_volume
+    if opt.bgm_volume is not None:
+        style.audio.bgm_volume = opt.bgm_volume
     if opt.remember:
         from .memory.store import apply_series_memory
 
@@ -154,6 +193,7 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     job.mkdir(parents=True, exist_ok=True)
     res = JobResult(job_dir=job)
 
+    apply_config(opt)
     t_start = time.time()
     idx = analyze(video, job, genre_hint=opt.genre, whisper_model=opt.whisper_model, language=opt.language,
                   separate=opt.separate, force=opt.force_analyze)

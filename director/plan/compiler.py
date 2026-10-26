@@ -392,6 +392,13 @@ def music_file(mood: str, assets: Path) -> Path | None:
     return sorted(files)[0] if files else None
 
 
+def _pct_db(pct: float) -> float:
+    """Volume percent -> dB (100% = 0 dB, 50% = -6 dB)."""
+    import math
+
+    return round(20 * math.log10(max(pct, 1.0) / 100.0), 2)
+
+
 AUDIO_FX = {"echo", "reverb", "muffled", "radio", "phone", "pitch_up", "pitch_down", "slow_audio", "tape_stop", "bass_boost", "stereo_pan"}
 
 
@@ -610,7 +617,7 @@ def compile_plan(
         voice_source="vocals" if stems.get("vocals") else "original",
         bgm_source=stems.get("no_vocals") if (stems.get("no_vocals") and au.keep_original_bgm) else None,
         denoise=au.denoise, voice_enhance=au.voice_enhance, duck_db=au.duck_db, loudness_lufs=au.loudness_lufs,
-        clip_fx=audio_fx, volume=volume,
+        clip_fx=audio_fx, volume=volume, bgm_gain_db=_pct_db(au.bgm_volume),
     )
     for m in draft.music:
         f = music_file(m.mood, assets)
@@ -619,9 +626,11 @@ def compile_plan(
         a = clips[max(0, min(m.from_clip, len(clips) - 1))].start if clips else 0
         last = clips[m.to_clip if m.to_clip >= 0 else -1] if clips else None
         b = last.start + last.duration if last else total
-        audio.music.append(MusicCue(file=str(f), start=round(a, 3), end=round(b, 3), gain_db=m.gain_db, mood=m.mood))
+        audio.music.append(MusicCue(file=str(f), start=round(a, 3), end=round(b, 3), gain_db=m.gain_db + _pct_db(au.music_volume), mood=m.mood))
         if audio.bgm_source:
             audio.volume.append(VolumeEvent(target="bgm", start=a, end=b, gain=0.3))
+    if au.sfx_volume <= 0:
+        sfx = []
     for s in sfx:
         wc = _resolve(wclips, s.orig, s.target, s.at)
         if wc is None:
@@ -629,7 +638,7 @@ def compile_plan(
         f = sfx_file(s.id, assets, cache / "sfx")
         if f is None:
             continue
-        audio.sfx.append(SfxCue(id=s.id, file=str(f), start=round(timeline(wc, s.at), 3), gain_db=s.gain_db - 3.0))
+        audio.sfx.append(SfxCue(id=s.id, file=str(f), start=round(timeline(wc, s.at), 3), gain_db=s.gain_db - 3.0 + _pct_db(au.sfx_volume)))
     # de-duplicate SFX that land on top of each other
     audio.sfx.sort(key=lambda s: s.start)
     dedup: list[SfxCue] = []

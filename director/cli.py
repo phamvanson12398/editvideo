@@ -47,6 +47,7 @@ def cmd_edit(a: argparse.Namespace) -> int:
         genre=a.genre, whisper_model=a.whisper_model, language=a.lang, separate=not a.no_separate,
         force_analyze=a.reanalyze, export_timeline=not a.no_export, remember=not a.no_memory, upscale=a.upscale,
         reference=Path(a.ref) if a.ref else None, text_language=a.text_lang, fast=a.fast,
+        sfx_volume=a.sfx_volume, music_volume=a.music_volume,
     )
     res = run_job(a.video, opt)
     print("\n" + res.summary)
@@ -221,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--no-llm", action="store_true", help="Không dùng AI (planner offline)")
     e.add_argument("--critic", type=int, default=None, help="Số vòng tự xem lại & sửa (cần AI). Mặc định: 1 vòng nếu video ≤ 3 phút")
     e.add_argument("--nhanh", "--fast", dest="fast", action="store_true", help="Xuất 720p: dựng nhanh gần gấp đôi")
+    e.add_argument("--sfx-volume", type=float, help="Âm lượng tiếng động, %% (0 = tắt, 100 = bình thường). Mặc định theo cau_hinh.json (50)")
+    e.add_argument("--music-volume", type=float, help="Âm lượng nhạc nền thêm vào, %%")
     e.add_argument("--variants", type=int, default=1, choices=[1, 2, 3], help="Số phương án (chuẩn / mạnh tay / an toàn)")
     e.add_argument("--genre", choices=["anime", "cartoon3d", "live", "gameplay"], help="Ghi đè thể loại tự nhận")
     e.add_argument("--whisper-model", help="large-v3-turbo | medium | small ...")

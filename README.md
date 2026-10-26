@@ -42,6 +42,7 @@ Không có AI, tool vẫn chạy đầy đủ bằng bộ lập kế hoạch off
 | `3_SUA_BAN_DUNG.bat` | Sửa bản dựng gần nhất bằng lời (hoặc kéo thả một file `*.plan.json` vào để sửa bản đó) |
 | `4_STUDIO.bat` | Mở giao diện web trên trình duyệt |
 | `5_CAI_THEM_GPU.bat` | Cài PyTorch CUDA 12.6 (hợp GTX 10xx), Demucs và thư viện CUDA cho Whisper chạy bằng GPU |
+| `7_CAU_HINH.bat` | Mở file cấu hình: âm lượng tiếng động/nhạc, ngôn ngữ chữ, dựng nhanh 720p |
 | `6_CAI_ANTIGRAVITY.bat` | Cài Antigravity CLI (`agy`) và đăng nhập tài khoản Google để tool dùng AI lập kế hoạch và tự xem lại bản nháp (không cần API key) |
 
 Trước khi chạy `1_CAI_DAT.bat`, máy cần có sẵn Python 3.11, Node.js LTS và ffmpeg (xem mục dưới).
@@ -140,6 +141,15 @@ Kết quả nằm trong `outputs/`: `<tên>_<khung>.mp4`, `<tên>.edl`, `<tên>.
 - `thêm phụ đề to kiểu TikTok dù đã có sub` → vẫn thêm phụ đề khi video có sub sẵn
 - `khung instagram và vuông` → xuất 4:5 và 1:1
 - `nhạc buồn, giữ nguyên nhạc gốc` → chọn nhạc trong `assets/music/sad/`
+
+### Âm lượng tiếng động và nhạc
+
+Tiếng động mặc định ở mức **50%** (nhỏ hơn bản trước khoảng một nửa). Có 4 cách chỉnh, cách sau ghi đè cách trước:
+
+1. **File `cau_hinh.json`** (mở bằng `7_CAU_HINH.bat`): `am_luong_tieng_dong`, `am_luong_nhac_them`, `am_luong_nhac_goc` tính theo % (0 = tắt, 100 = bình thường, tối đa 200). Áp dụng cho mọi lần dựng.
+2. **Studio:** thanh kéo "Âm lượng tiếng động" và "Âm lượng nhạc nền".
+3. **Dòng lệnh:** `--sfx-volume 30`, `--music-volume 70`.
+4. **Ghi trong lệnh phong cách:** "tiếng động 30%", "tiếng động nhỏ thôi", "nhạc nền 60%", "không tiếng động". Dùng được cả khi sửa bằng lời: `3_SUA_BAN_DUNG.bat` → "tiếng động nhỏ hơn".
 
 ### Tốc độ
 

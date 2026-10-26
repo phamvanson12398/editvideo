@@ -83,6 +83,10 @@ button.primary:disabled { opacity: .5; cursor: default; }
       <div><label>AI (Antigravity)</label><select id="llm"><option value="auto">Tự động</option><option value="on">Bật</option><option value="off">Tắt (offline)</option></select></div>
       <div><label>Vòng tự xem lại</label><select id="critic"><option value="-1" selected>Tự động</option><option>0</option><option>1</option><option>2</option></select></div>
     </div>
+    <label>Âm lượng tiếng động: <b id="sfxV">50</b>%</label>
+    <input type="range" id="sfx" min="0" max="150" step="5" value="50" style="width:100%">
+    <label>Âm lượng nhạc nền thêm vào: <b id="musV">100</b>%</label>
+    <input type="range" id="mus" min="0" max="150" step="5" value="100" style="width:100%">
     <label><input type="checkbox" id="fast"> Dựng nhanh 720p (nhanh gần gấp đôi)</label>
     <label><input type="checkbox" id="draft"> Chỉ dựng bản nháp nhanh</label>
     <button class="primary" id="go" disabled>Dựng video</button>
@@ -104,6 +108,13 @@ fetch('/api/presets').then(r => r.json()).then(p => {
   for (const [k, v] of Object.entries(p)) {
     const o = document.createElement('option'); o.value = k; o.textContent = `${k}: ${v}`; $('#preset').appendChild(o);
   }
+});
+for (const [id, out] of [['sfx', 'sfxV'], ['mus', 'musV']]) $('#' + id).oninput = () => { $('#' + out).textContent = $('#' + id).value; };
+fetch('/api/config').then(r => r.json()).then(c => {
+  if (c.am_luong_tieng_dong != null) { $('#sfx').value = c.am_luong_tieng_dong; $('#sfxV').textContent = c.am_luong_tieng_dong; }
+  if (c.am_luong_nhac_them != null) { $('#mus').value = c.am_luong_nhac_them; $('#musV').textContent = c.am_luong_nhac_them; }
+  if (c.dung_nhanh_720p) $('#fast').checked = true;
+  if (c.ngon_ngu_chu && c.ngon_ngu_chu !== 'auto') $('#textLang').value = c.ngon_ngu_chu;
 });
 document.querySelectorAll('#frames .chip').forEach(c => c.onclick = () => c.classList.toggle('on'));
 
@@ -132,7 +143,7 @@ $('#go').onclick = async () => {
   const fd = new FormData();
   fd.append('video', videoPath); fd.append('command', $('#command').value); fd.append('frames', frames());
   fd.append('preset', $('#preset').value); fd.append('variants', $('#variants').value); fd.append('use_llm', $('#llm').value);
-  fd.append('critic', $('#critic').value); fd.append('text_lang', $('#textLang').value); fd.append('fast', $('#fast').checked); fd.append('draft', $('#draft').checked);
+  fd.append('critic', $('#critic').value); fd.append('text_lang', $('#textLang').value); fd.append('fast', $('#fast').checked); fd.append('sfx_volume', $('#sfx').value); fd.append('music_volume', $('#mus').value); fd.append('draft', $('#draft').checked);
   const r = await fetch('/api/edit', {method: 'POST', body: fd});
   const j = await r.json(); watch(j.job);
 };

@@ -208,6 +208,17 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
         au["sfx"] = False
     if _has(text, "bỏ nhạc gốc", "tắt nhạc gốc"):
         au["keep_original_bgm"] = False
+    low_t = text.lower()
+    m = re.search(r"(?:tiếng động|hiệu ứng âm thanh|sfx)[^0-9,.;]{0,12}(\d{1,3})\s*%", low_t)
+    if m:
+        au["sfx_volume"] = float(m.group(1))
+    elif _has(text, "tiếng động nhỏ", "tiếng động nhỏ thôi", "sfx nhỏ", "hiệu ứng âm thanh nhỏ", "tiếng động nhẹ"):
+        au["sfx_volume"] = 30.0
+    elif _has(text, "tiếng động to", "sfx to", "hiệu ứng âm thanh to"):
+        au["sfx_volume"] = 90.0
+    m = re.search(r"nhạc (?:nền )?[^0-9,.;]{0,8}(\d{1,3})\s*%", low_t)
+    if m:
+        au["music_volume"] = float(m.group(1))
     if au:
         patch["audio"] = au
 

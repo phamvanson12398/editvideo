@@ -74,6 +74,9 @@ class AudioStyle(BaseModel):
     sfx_pack: str = "drama"
     loudness_lufs: float = -14.0
     music_drop_on_shock: bool = True
+    sfx_volume: float = 50.0  # % loudness of sound effects (0 = off, 100 = full, up to 200)
+    music_volume: float = 100.0  # % loudness of added background music
+    bgm_volume: float = 100.0  # % loudness of the video's own music (when separated)
 
 
 class EffectBudget(BaseModel):
