@@ -20,6 +20,7 @@ Hầu hết tool "AI edit" hiện nay chạy **một lượt**: phân tích → 
 | 6 | **Tối ưu giữ chân người xem** | Chấm điểm hook 3 giây đầu, phát hiện đoạn dễ khiến người xem lướt qua (im lặng dài, hình tĩnh lâu, lặp ý) và xử lý. |
 | 7 | **Học thói quen của bạn** | Mỗi lần bạn sửa tay hoặc chọn phương án nào, tool ghi nhớ để lần sau dựng sát ý bạn hơn. |
 | 8 | **Không khoá bạn trong tool** | Xuất timeline OpenTimelineIO (FCPXML/EDL) để mở trong DaVinci Resolve / Premiere và chỉnh tiếp. |
+| 9 | **Tự nhận thể loại** | Tự biết video là hoạt hình, người thật hay gameplay rồi đổi bộ công cụ phân tích và phong cách mặc định. Ưu tiên số 1: **hoạt hình drama** (xem mục 4). |
 
 ---
 
@@ -81,8 +82,8 @@ Nguyên tắc thiết kế:
 | Nói hỏng rồi nói lại | So sánh độ giống câu liên tiếp (embedding văn bản) | Giữ lần nói hay nhất |
 | Ngữ điệu (to/nhỏ, cao/thấp) | **librosa** / **parselmouth** | Zoom vào từ được nhấn mạnh |
 | Chuyển cảnh | **PySceneDetect** / **TransNetV2** | Cắt đúng điểm cảnh |
-| Mặt, tư thế, vị trí người | **MediaPipe**, **YOLO11** | Reframe theo khung đích, bám theo người, tránh phụ đề che mặt |
-| Cảm xúc khuôn mặt | Model nhận diện cảm xúc nhẹ trên mặt đã cắt | Chọn khoảnh khắc biểu cảm |
+| Mặt, tư thế, vị trí người | **MediaPipe**, **YOLO11** (người thật); **YOLO huấn luyện cho mặt hoạt hình** (hoạt hình) | Reframe theo khung đích, bám theo nhân vật, tránh phụ đề che mặt |
+| Cảm xúc | Người thật: model cảm xúc khuôn mặt. Hoạt hình: giọng nói + nhạc nền + VLM mô tả cảnh | Chọn khoảnh khắc biểu cảm |
 | Năng lượng âm thanh, beat nhạc | **librosa** (onset, beat tracking) | Cắt theo nhịp, tìm cao trào |
 | Ý nghĩa hình ảnh | **SigLIP / CLIP** embedding mỗi keyframe | Tìm cảnh bằng câu chữ ("đoạn cầm điện thoại") |
 | Chất lượng hình | Độ nét (Laplacian), rung, thiếu sáng | Loại cảnh hỏng |
@@ -291,7 +292,97 @@ Kèm theo là các **kiểm tra tự động không cần AI**: phụ đề vư�
 
 ---
 
-## 4. Chạy trên GTX 1080 (8 GB VRAM)
+## 4. Thể loại ưu tiên: hoạt hình drama
+
+Video của bạn đa thể loại nhưng chủ yếu là **hoạt hình kiểu drama**. Hoạt hình khác video người thật ở nhiều điểm, nên Director có **hồ sơ thể loại** (genre profile): mỗi thể loại một bộ công cụ phân tích, một bộ hiệu ứng ưu tiên và một Style DNA mặc định.
+
+### 4.1 Tự nhận thể loại
+
+Bước đầu tiên của Perception: lấy khoảng 20 keyframe, phân loại zero-shot bằng SigLIP ("anime", "cartoon 3D", "người thật", "gameplay"...), không chắc thì hỏi VLM. Người dùng có thể ghi đè bằng lệnh (`--genre anime-drama`). Một video có thể pha trộn (ví dụ review có cả mặt người và cảnh hoạt hình); khi đó từng đoạn được gắn thể loại riêng.
+
+### 4.2 Vì sao hoạt hình cần xử lý riêng
+
+| Vấn đề | Công cụ cho người thật bị sai thế nào | Cách Director xử lý |
+|---|---|---|
+| **Mặt nhân vật** | MediaPipe không nhận ra mặt hoạt hình | Dùng model YOLO huấn luyện riêng cho mặt/thân nhân vật hoạt hình |
+| **Biết ai là ai** | Nhận diện khuôn mặt người không dùng được | Cắt ảnh nhân vật → SigLIP embedding → gom cụm thành "nhân vật A, B, C". Bạn đặt tên một lần, tool nhớ cho cả bộ phim |
+| **Ai đang nói** | Hoạt hình không có khẩu hình rõ ràng | pyannote tách giọng theo người nói, rồi ghép giọng với nhân vật hay xuất hiện trên hình cùng lúc. Bạn sửa được nếu sai |
+| **Lời thoại lẫn nhạc** | Whisper nghe sai khi nhạc nền to và nhiều tiếng động | **Demucs tách thoại ra trước**, sau đó mới chạy Whisper. Nhạc nền gốc được giữ riêng để mix lại |
+| **Chữ cứng trên hình** (phụ đề gốc, chữ Trung/Nhật/Hàn) | Phụ đề mới đè lên phụ đề cũ, rất rối | PaddleOCR tìm vùng chữ. Tuỳ lệnh: giữ, che bằng khối mờ/màu, **xoá bằng AI** (LaMa/ProPainter), hoặc cắt khung tránh vùng chữ. Chữ đọc được còn dùng làm transcript khi không nghe được |
+| **Ngôn ngữ gốc khác** | | LLM dịch lời thoại (theo ngữ cảnh cả tập, giữ đúng tên và cách xưng hô nhân vật) → phụ đề tiếng Việt hoặc ngôn ngữ bạn chọn |
+| **Hoạt hình giữ khung** (một hình lặp nhiều frame) | Dò chuyển cảnh báo sai; RIFE tạo hình méo khi nội suy | Chỉnh ngưỡng dò cảnh cho hoạt hình, nhận biết frame lặp bằng perceptual hash. **Tắt RIFE mặc định**; làm chậm bằng giữ hình / zoom chậm thay vì nội suy |
+| **Cảm xúc** | Model cảm xúc khuôn mặt người không chạy trên hình vẽ | Kết hợp giọng nói (cao độ, âm lượng, khóc/hét), cảm xúc nhạc nền gốc, nội dung lời thoại và VLM mô tả cảnh |
+| **Nâng nét** | Model cho ảnh thật làm hình vẽ bị bết | Real-ESRGAN bản **realesr-animevideov3**: nhẹ, nhanh, giữ nét vẽ |
+
+### 4.3 Hiểu câu chuyện drama
+
+Director Agent dựng **bản đồ câu chuyện** cho mỗi tập, từ transcript, nhân vật và keyframe:
+
+```jsonc
+{
+  "characters": [{ "id": "A", "name": "Tiểu Mai", "role": "nữ chính" }, ...],
+  "relations":  [{ "a": "A", "b": "B", "type": "mẹ chồng – nàng dâu", "tension": 0.9 }],
+  "beats": [
+    { "t0": 12.0,  "t1": 40.5,  "type": "setup",     "summary": "..." },
+    { "t0": 95.2,  "t1": 118.0, "type": "conflict",  "intensity": 0.8 },
+    { "t0": 201.3, "t1": 214.9, "type": "twist",     "intensity": 0.95, "summary": "lộ ra con ruột" },
+    { "t0": 260.0, "t1": 275.0, "type": "cliffhanger" }
+  ]
+}
+```
+
+Từ đó có thể dựng theo cấu trúc của kênh drama:
+
+- **Hook bằng cú twist:** mở bằng 2–3 giây căng nhất (cái tát, câu thoại sốc), sau đó "quay lại trước đó..." và kể từ đầu.
+- **Nén câu chuyện:** giữ nguyên các nhịp setup → xung đột → cao trào → twist, bỏ đoạn chuyển tiếp, giữ thời lượng theo lệnh ("rút còn 60 giây", "3 phần, mỗi phần 1 phút").
+- **Chia nhiều phần**, mỗi phần kết bằng một cliffhanger.
+- **Đặt tiêu đề và chú thích** gợi tò mò theo nội dung thật của tập.
+
+### 4.4 Bộ hiệu ứng drama
+
+Thêm vào Effect Registry, agent dùng theo cảm xúc của từng nhịp:
+
+| Khoảnh khắc | Hiệu ứng hình | Âm thanh |
+|---|---|---|
+| Sốc, lộ bí mật | Zoom giật vào mặt, rung khung, chớp trắng, dừng hình + chữ to | "dun dun dun", tiếng nhấn mạnh, record scratch |
+| Giận dữ | Rung mạnh, ám đỏ, zoom liên tục | Nhịp tim nhanh, tiếng nổ trầm |
+| Buồn, xúc động | Zoom đẩy chậm, giảm bão hoà, vignette, làm chậm bằng giữ hình | Đổi nhạc nền sang piano / nhạc buồn |
+| Hài, cạn lời | Sticker emoji, chữ kiểu 예능 Hàn, zoom méo vào biểu cảm | "boing", tiếng quạ kêu, tiếng cười |
+| Phản diện xuất hiện | Ám tối, nhạc trầm, chữ cảnh báo | Nhạc căng thẳng |
+| Cliffhanger | Dừng hình, đen dần, chữ "Còn tiếp..." | Một nốt nhạc treo |
+
+Phụ đề drama có màu theo nhân vật (mỗi nhân vật một màu, giữ nguyên cả bộ phim) và đổi kiểu theo cảm xúc (rung khi hét, nhỏ và nghiêng khi thì thầm).
+
+### 4.5 Ba chế độ làm việc
+
+| Chế độ | Lệnh ví dụ | Kết quả |
+|---|---|---|
+| **Cắt lại** | "Cắt tập này thành short 60 giây, mở bằng cú tát" | Dùng thoại gốc, phụ đề dịch, hiệu ứng drama |
+| **Kể lại có lời bình** | "Làm video tóm tắt có giọng đọc kể chuyện" | LLM viết lời kể theo bản đồ câu chuyện → giọng đọc TTS → cảnh khớp với từng câu, thoại gốc giảm nhỏ hoặc chèn xen kẽ ở đoạn đắt |
+| **Hỗn hợp** | "Kể tóm tắt, đến đoạn cãi nhau thì để thoại gốc" | Hai chế độ trên đan xen |
+
+### 4.6 Style DNA mặc định cho hoạt hình drama
+
+```jsonc
+{
+  "name": "anime-drama",
+  "pacing":      { "avg_shot_sec": 2.2, "slow_down_on": ["sad", "reveal"], "cut_on_beat": false },
+  "hook":        { "max_sec": 3, "strategy": "twist-first-then-rewind" },
+  "captions":    { "preset": "drama-color-by-character", "emotion_styles": true, "words_per_line": 5 },
+  "camera":      { "reframe": "follow-character", "punch_in_on": ["shock", "anger"], "shake_on": ["shock"] },
+  "transitions": { "default": "hard-cut", "accent": ["flash-white", "fade-black"] },
+  "color":       { "per_emotion": { "sad": "desaturate", "anger": "red-tint", "villain": "dark" } },
+  "audio":       { "keep_original_bgm": true, "bgm_by_emotion": true, "sfx_pack": "drama" },
+  "hardsubs":    "remove",          // keep | cover | remove | crop
+  "translate_to": "vi"
+}
+```
+
+Đây chỉ là điểm xuất phát. Lệnh của bạn hoặc video mẫu sẽ ghi đè từng thông số.
+
+---
+
+## 5. Chạy trên GTX 1080 (8 GB VRAM)
 
 GTX 1080 dùng kiến trúc Pascal (compute 6.1). Những điều cần biết:
 
@@ -303,14 +394,19 @@ GTX 1080 dùng kiến trúc Pascal (compute 6.1). Những điều cần biết:
 | Tác vụ | Model | Chạy ở đâu | Ghi chú cho 1080 |
 |---|---|---|---|
 | Nhận dạng giọng nói | faster-whisper large-v3-turbo | Local | `compute_type="int8"` hoặc `float32`, khoảng 3–5 GB |
-| Dò mặt / vật thể | MediaPipe, YOLO11n/s | Local | Nhẹ, chạy nhanh |
+| Dò mặt / vật thể | MediaPipe, YOLO11n/s, YOLO mặt hoạt hình | Local | Nhẹ, chạy nhanh |
+| Nhận diện nhân vật | SigLIP embedding + gom cụm | Local | Nhẹ |
+| Tách thoại khỏi nhạc nền | Demucs | Local | Chạy trước Whisper cho hoạt hình |
+| Ai đang nói | pyannote (diarization) | Local | Khoảng 2–3 GB |
+| Đọc chữ cứng trên hình | PaddleOCR | Local | Nhẹ |
+| Xoá chữ cứng | LaMa (từng khung) / ProPainter (mượt theo thời gian) | Local | LaMa nhanh; ProPainter chỉ cho vùng nhỏ |
 | Embedding hình | SigLIP base | Local | Nhẹ |
 | Chuyển cảnh | TransNetV2 | Local | Nhẹ |
 | Tách nền người | RobustVideoMatting | Local | Chạy tốt ở 1080p |
 | Phân đoạn vật thể | SAM 2 (tiny/small) | Local | Bản large dễ hết VRAM |
 | Xoá vật thể | ProPainter | Local, giới hạn | Xử lý vùng cắt ở 720p, đoạn ngắn |
-| Nâng nét | Real-ESRGAN | Local | Chậm, chỉ dùng cho đoạn cần |
-| Slow motion | RIFE (Practical-RIFE) | Local | Chạy tốt |
+| Nâng nét | Real-ESRGAN; bản **realesr-animevideov3** cho hoạt hình | Local | Bản anime nhẹ và nhanh hơn nhiều |
+| Slow motion | RIFE (Practical-RIFE) | Local | Chạy tốt với người thật; tắt mặc định với hoạt hình (xem mục 4) |
 | Khử ồn | DeepFilterNet | Local | Chạy được cả trên CPU |
 | Tách giọng / nhạc | Demucs (htdemucs) | Local | Khoảng 4 GB, chạy theo đoạn |
 | Lập kế hoạch dựng | Claude (Opus cho kế hoạch, Sonnet cho sửa nhanh) | Cloud | Model đủ mạnh để suy nghĩ không chạy nổi trên 8 GB |
@@ -322,7 +418,7 @@ Chi phí API được kiểm soát bằng: gửi keyframe thay vì cả video, c
 
 ---
 
-## 5. Công nghệ và cấu trúc repo
+## 6. Công nghệ và cấu trúc repo
 
 - **Python 3.11**: pipeline, Perception, Agent, Render orchestration (FastAPI làm API, quản lý gói bằng `uv`).
 - **TypeScript**: Remotion (lớp phủ) và Studio (Next.js).
@@ -337,6 +433,7 @@ editvideo/
 │   ├── perception/            # whisper, scenes, faces, audio, embeddings
 │   ├── index/                 # Video Index + truy vấn
 │   ├── style/                 # Style DNA: parse lời, trích từ video mẫu, hồ sơ
+│   ├── genres/                # hồ sơ thể loại: anime-drama, live-action, gameplay...
 │   ├── agent/                 # Director Agent, Critic, tools
 │   ├── plan/                  # Pydantic schema Edit Plan, validate, diff
 │   ├── effects/               # Effect Registry + plugin ffmpeg/ai
@@ -351,12 +448,12 @@ editvideo/
 
 ---
 
-## 6. Lộ trình
+## 7. Lộ trình
 
 | Mốc | Nội dung | Xong khi |
 |---|---|---|
 | **M1: Nền móng** | Schema Edit Plan, CLI, Perception cơ bản (whisper, silence, scene), render ffmpeg + Remotion phụ đề, ghép lớp | `director edit in.mp4 --style "cắt im lặng, phụ đề to"` ra MP4 đúng |
-| **M2: Đẹp hơn** | Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo mặt, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Video nói chuyện ra chất lượng đăng TikTok được |
+| **M2: Hoạt hình drama** | Hồ sơ thể loại hoạt hình drama (mục 4): tách thoại khỏi nhạc, dò mặt và nhận diện nhân vật hoạt hình, xử lý chữ cứng, bộ hiệu ứng drama. Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo nhân vật, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Một tập hoạt hình drama ra được short có hook, phụ đề, hiệu ứng và tiếng động, đăng được |
 | **M3: Bộ não** | Director Agent dùng tool, Style DNA từ câu chữ, Effect Registry | Mô tả tự do → kế hoạch dựng hợp lý |
 | **M4: Tự sửa** | Bản nháp nhanh, Critic Loop, render theo cache | Điểm Critic tăng sau mỗi vòng |
 | **M5: Studio** | Web UI, sửa bằng chat, nhiều phương án, xuất OTIO | Dùng hằng ngày không cần dòng lệnh |
@@ -364,10 +461,11 @@ editvideo/
 
 ---
 
-## 7. Rủi ro và lưu ý
+## 8. Rủi ro và lưu ý
 
 - **Giấy phép Remotion:** miễn phí cho cá nhân và công ty tối đa 3 người, lớn hơn cần mua license. Vì Remotion chỉ nằm ở lớp phủ, có thể thay bằng Revideo nếu cần.
 - **Bản quyền nhạc và B-roll:** chỉ dùng nguồn có giấy phép rõ ràng (Pexels, Pixabay, YouTube Audio Library, thư viện tự mua). Lưu nguồn của mọi asset vào Edit Plan.
 - **Giọng nói nhân bản / sửa lời bằng AI** (nếu thêm sau này): chỉ dùng với giọng của chính bạn hoặc người đã đồng ý.
+- **Bản quyền phim hoạt hình:** phần lớn phim hoạt hình có chủ sở hữu. Tool chỉ là công cụ dựng; việc đăng lại nội dung của người khác có thể bị Content ID hoặc khiếu nại bản quyền. Nên dùng nội dung bạn có quyền, hoặc làm review/bình luận có giá trị biến đổi thật sự và tìm hiểu chính sách của nền tảng. Tool không có tính năng lách cơ chế phát hiện bản quyền.
 - **Chi phí API:** Critic Loop tốn nhất. Có giới hạn vòng, cache, và chế độ "tiết kiệm".
 - **8 GB VRAM:** một số model AI nặng phải chạy ở độ phân giải thấp hoặc theo đoạn. Chừa sẵn tuỳ chọn chuyển sang cloud GPU (Replicate, fal.ai) cho từng hiệu ứng.
