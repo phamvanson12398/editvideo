@@ -17,9 +17,25 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 
+def _ask(prompt: str) -> str:
+    try:
+        return input(prompt).strip()
+    except EOFError:
+        return ""
+
+
 def cmd_edit(a: argparse.Namespace) -> int:
     from .pipeline import JobOptions, run_job
 
+    if a.ask:
+        if not a.video:
+            a.video = _ask("Kéo thả file video vào đây rồi bấm Enter: ").strip('"')
+        if a.command is None:
+            print("Mô tả phong cách (bỏ trống = tool tự quyết). Ví dụ: drama dọc 9:16, hook bằng cú twist, 60 giây")
+            a.command = _ask("> ")
+    if not a.video:
+        print("Chưa có video.", file=sys.stderr)
+        return 1
     opt = JobOptions(
         command=a.command or "", frames=a.frame or None, preset=a.preset, out_dir=Path(a.out), draft=a.draft,
         use_llm=False if a.no_llm else (True if a.llm else None), critic_rounds=a.critic, variants=a.variants,
@@ -39,8 +55,20 @@ def cmd_edit(a: argparse.Namespace) -> int:
 def cmd_revise(a: argparse.Namespace) -> int:
     from .pipeline import JobOptions, revise_job
 
+    plan = a.plan
+    if plan == "last":
+        plans = sorted((Path(a.out) / "jobs").glob("*/*.plan.json"), key=lambda p: p.stat().st_mtime)
+        if not plans:
+            print("Chưa có bản dựng nào để sửa. Hãy dựng video trước.", file=sys.stderr)
+            return 1
+        plan = str(plans[-1])
+        print(f"Sửa bản dựng gần nhất: {plan}")
+    instruction = a.instruction or _ask("Muốn sửa gì? (vd: intro nhanh hơn, bỏ đoạn 0:40, phụ đề ở trên)\n> ")
+    if not instruction:
+        print("Chưa nhập yêu cầu sửa.", file=sys.stderr)
+        return 1
     opt = JobOptions(out_dir=Path(a.out), draft=a.draft, use_llm=False if a.no_llm else None)
-    res = revise_job(a.plan, a.instruction, opt)
+    res = revise_job(plan, instruction, opt)
     print("\n" + res.summary)
     for p in res.outputs:
         print(f"  {p}")
@@ -163,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("edit", help="Dựng video từ 1 file video gốc")
-    e.add_argument("video")
+    e.add_argument("video", nargs="?")
+    e.add_argument("--ask", action="store_true", help="Hỏi video và mô tả phong cách khi chạy (dùng cho file .bat)")
     e.add_argument("-c", "--command", "--style", dest="command", help='Lệnh/mô tả phong cách, vd: "drama dọc 9:16, hook bằng cú twist, 60 giây"')
     e.add_argument("-f", "--frame", action="append", help='Khung hình (lặp lại được): 9:16, tiktok, youtube, 4:5, 1080x1350, "điện ảnh"...')
     e.add_argument("--preset", help="Preset phong cách (xem `director styles`)")
@@ -185,8 +214,8 @@ def main(argv: list[str] | None = None) -> int:
     e.set_defaults(fn=cmd_edit)
 
     r = sub.add_parser("revise", help="Sửa bản dựng bằng lời: director revise outputs/jobs/.../x.plan.json \"intro nhanh hơn\"")
-    r.add_argument("plan")
-    r.add_argument("instruction")
+    r.add_argument("plan", help='Đường dẫn *.plan.json, hoặc "last" = bản dựng gần nhất')
+    r.add_argument("instruction", nargs="?", help="Yêu cầu sửa (bỏ trống thì tool hỏi)")
     r.add_argument("-o", "--out", default="outputs")
     r.add_argument("--draft", action="store_true")
     r.add_argument("--no-llm", action="store_true")

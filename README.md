@@ -33,6 +33,19 @@ Không có API Claude, tool vẫn chạy đầy đủ bằng bộ lập kế ho�
 
 ---
 
+## Dùng nhanh trên Windows bằng file .bat
+
+| File | Việc |
+|---|---|
+| `1_CAI_DAT.bat` | Chạy **một lần** sau khi tải code: kiểm tra Python/Node/ffmpeg, cài thư viện, cài Remotion, chạy `director doctor` |
+| `2_DUNG_VIDEO.bat` | **Kéo thả video** (một hoặc nhiều file) vào file này → tool hỏi mô tả phong cách (bỏ trống = tự quyết) → dựng → mở thư mục `outputs` |
+| `3_SUA_BAN_DUNG.bat` | Sửa bản dựng gần nhất bằng lời (hoặc kéo thả một file `*.plan.json` vào để sửa bản đó) |
+| `4_STUDIO.bat` | Mở giao diện web trên trình duyệt |
+| `5_CAI_THEM_GPU.bat` | Cài PyTorch CUDA 12.6 (hợp GTX 10xx), Demucs và thư viện CUDA cho Whisper chạy bằng GPU |
+| `6_DAT_API_CLAUDE.bat` | Lưu API key Claude để tool dùng AI lập kế hoạch và tự xem lại bản nháp |
+
+Trước khi chạy `1_CAI_DAT.bat`, máy cần có sẵn Python 3.11, Node.js LTS và ffmpeg (xem mục dưới).
+
 ## Cài đặt (Windows, GTX 1080)
 
 ### 1. Phần bắt buộc
