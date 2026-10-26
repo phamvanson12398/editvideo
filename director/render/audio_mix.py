@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..plan.schema import Clip, EditPlan
 from ..utils.ffmpeg import FFmpegError, filter_script_args, run
-from ..utils.log import log, warn
+from ..utils.log import log, pool_map, warn
 from .prep import _atempo_chain
 
 SR = 48000
@@ -121,8 +120,7 @@ def cut_track(plan: EditPlan, src: str, work: Path, label: str, apply_fx: bool) 
             _silence(c.duration, dst)
         return dst
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        pieces = list(ex.map(work_one, enumerate(plan.clips)))
+    pieces = pool_map(work_one, list(enumerate(plan.clips)), 4)
     listing = work / f"{label}_list.txt"
     listing.write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in pieces), encoding="utf-8")
     out = work / f"{label}.wav"

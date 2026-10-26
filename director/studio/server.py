@@ -30,16 +30,36 @@ class Job:
 
 
 JOBS: dict[str, Job] = {}
-_lock = threading.Lock()  # one render at a time (single GPU / CPU budget)
 
 
-def _run(job: Job, fn) -> None:
+def _parallel_slots() -> int:
+    from ..pipeline import load_config
+
+    try:
+        return max(1, min(8, int(load_config().get("so_viec_song_song", 2))))
+    except (TypeError, ValueError):
+        return 2
+
+
+_slots = threading.Semaphore(_parallel_slots())  # how many videos are processed at the same time
+_key_locks: dict[str, threading.Lock] = {}
+_key_guard = threading.Lock()
+
+
+def _key_lock(key: str) -> threading.Lock:
+    """Jobs on the SAME video share files (analysis, clips): they run one after another."""
+    with _key_guard:
+        return _key_locks.setdefault(key, threading.Lock())
+
+
+def _run(job: Job, fn, key: str) -> None:
     def listener(line: str) -> None:
         job.logs.append(line)
 
-    with _lock:
+    L.add_listener(listener)  # context-local: this thread (and its workers) only
+    L.set_tag(f"[{job.id}]")
+    with _key_lock(key), _slots:
         job.status = "running"
-        L.add_listener(listener)
         try:
             res = fn()
             job.outputs = [str(p) for p in res.outputs]
@@ -59,7 +79,7 @@ def create_app(out_dir: Path):
     from fastapi.staticfiles import StaticFiles
 
     from ..effects.catalog import to_json
-    from ..pipeline import JobOptions, revise_job, run_job
+    from ..pipeline import JobOptions, job_dir_for, revise_job, run_job
     from ..style.presets import list_presets
 
     out_dir = out_dir.resolve()
@@ -116,7 +136,7 @@ def create_app(out_dir: Path):
         )
         job = Job(id=uuid.uuid4().hex[:8], kind="edit", params={"video": video, "command": command})
         JOBS[job.id] = job
-        threading.Thread(target=_run, args=(job, lambda: run_job(video, opt)), daemon=True).start()
+        threading.Thread(target=_run, args=(job, lambda: run_job(video, opt), str(job_dir_for(Path(video), out_dir).resolve())), daemon=True).start()
         return {"job": job.id}
 
     @app.post("/api/revise")
@@ -126,7 +146,7 @@ def create_app(out_dir: Path):
         opt = JobOptions(out_dir=out_dir, draft=draft, use_llm={"on": True, "off": False}.get(use_llm))
         job = Job(id=uuid.uuid4().hex[:8], kind="revise", params={"plan": plan, "instruction": instruction})
         JOBS[job.id] = job
-        threading.Thread(target=_run, args=(job, lambda: revise_job(plan, instruction, opt)), daemon=True).start()
+        threading.Thread(target=_run, args=(job, lambda: revise_job(plan, instruction, opt), str(Path(plan).resolve().parent)), daemon=True).start()
         return {"job": job.id}
 
     @app.post("/api/choose")

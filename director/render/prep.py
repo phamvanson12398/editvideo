@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..aiops.ncnn import interpolate, realesrgan_bin, rife_bin
 from ..aiops.ncnn import upscale as ncnn_upscale
 from ..plan.schema import Clip, EditPlan
 from ..utils.ffmpeg import run, video_codec_args
-from ..utils.log import log
+from ..utils.log import log, pool_map
 from .luts import lut_path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -115,5 +114,4 @@ def prepare_clips(plan: EditPlan, public_dir: Path, *, draft: bool = False, work
         stamp.write_text(key)
 
     log(f"Chuẩn bị {len(plan.clips)} đoạn video{' (bản nháp)' if draft else ''}...")
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        list(ex.map(work, plan.clips))
+    pool_map(work, plan.clips, workers)

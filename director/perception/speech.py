@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ..utils.locks import gpu_lock
 from ..utils.log import log, warn
 from .schema import Sentence, TextRegion, Word
 
@@ -150,7 +151,11 @@ def transcribe(wav: str | Path, model_size: str | None = None, language: str | N
     # Pascal GPUs (GTX 10xx) have slow FP16: int8 is the fast, accurate choice there.
     compute = os.environ.get("DIRECTOR_WHISPER_COMPUTE") or ("int8_float32" if gpu else "int8")
     try:
-        sentences, lang = _run_whisper(WhisperModel, wav, size, "cuda" if gpu else "cpu", compute, language)
+        if gpu:
+            with gpu_lock("Whisper"):
+                sentences, lang = _run_whisper(WhisperModel, wav, size, "cuda", compute, language)
+        else:
+            sentences, lang = _run_whisper(WhisperModel, wav, size, "cpu", compute, language)
     except RuntimeError as e:
         if not gpu:
             raise
@@ -320,7 +325,8 @@ def separate_stems(wav_stereo: str | Path, out_dir: str | Path) -> dict[str, str
     tmp = out_dir / "demucs"
     cmd = [sys.executable, "-m", "demucs", "--two-stems=vocals", "-n", "htdemucs", "--segment", "7", "-o", str(tmp), str(wav_stereo)]
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
-    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    with gpu_lock("Demucs"):
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if proc.returncode != 0:
         warn(f"Demucs lỗi, bỏ qua tách nhạc: {proc.stderr[-500:]}")
         return {}
@@ -356,7 +362,8 @@ def diarize(wav: str | Path, sentences: list[Sentence]) -> int:
                 pipe.to(torch.device("cuda"))
         except Exception:
             pass
-        dia = pipe(str(wav))
+        with gpu_lock("pyannote"):
+            dia = pipe(str(wav))
     except Exception as e:
         warn(f"Diarization lỗi: {e}")
         return 0

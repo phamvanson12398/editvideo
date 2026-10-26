@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 from ..plan.schema import EditPlan
+from ..utils.locks import render_share
 from ..utils.log import log
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -67,7 +68,7 @@ def render_output(plan: EditPlan, output_id: str, public_dir: Path, out_file: Pa
         npx(), "remotion", "render", "src/index.ts", "Main", str(out_file.resolve()),
         f"--props={props.resolve()}", f"--public-dir={public_dir.resolve()}", "--muted",
         "--codec=h264", "--log=error", f"--crf={'28' if draft else '17'}",
-        f"--concurrency={concurrency or default_concurrency()}",
+        "--concurrency={CONC}",
         "--offthreadvideo-video-threads=4",
         "--timeout=120000",
     ]
@@ -76,8 +77,10 @@ def render_output(plan: EditPlan, output_id: str, public_dir: Path, out_file: Pa
     exe = browser_executable()
     if exe:
         cmd.append(f"--browser-executable={exe}")
-    log(f"Remotion dựng khung '{output_id}'{' (nháp)' if draft else ''}...")
-    proc = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    with render_share(concurrency or default_concurrency()) as conc:
+        cmd = [c.replace("{CONC}", str(conc)) for c in cmd]
+        log(f"Remotion dựng khung '{output_id}'{' (nháp)' if draft else ''} ({conc} luồng)...")
+        proc = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if proc.returncode != 0 or not out_file.exists():
         raise RemotionError(f"Remotion render lỗi:\n{(proc.stderr or '')[-4000:]}\n{(proc.stdout or '')[-2000:]}")
     return out_file

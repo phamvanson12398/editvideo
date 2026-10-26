@@ -159,6 +159,14 @@ Tiếng động mặc định ở mức **50%** (nhỏ hơn bản trước kho�
 - `--nhanh` (hoặc tích "Dựng nhanh 720p" trong Studio) xuất 720p.
 - Log in ra thời gian từng bước ("Phân tích xong", "Dựng ... mất ...s") để biết chậm ở đâu.
 
+### Dựng song song nhiều video
+
+- Mở Studio (`4_STUDIO.bat`), mở thêm tab trình duyệt cùng địa chỉ, mỗi tab chọn một video rồi bấm dựng. Mục "Tất cả các việc" hiện mọi việc đang chạy/đang chờ; bấm vào một việc để xem tiến độ của nó.
+- Mặc định chạy **2 việc cùng lúc**, việc thứ 3 trở đi xếp hàng. Đổi bằng `so_viec_song_song` trong `cau_hinh.json` (1–8), khởi động lại Studio để áp dụng.
+- Hai việc trên **cùng một video** (cùng thư mục job) sẽ tự chạy lần lượt để không ghi đè file của nhau.
+- Các bước dùng GPU (Whisper, Demucs, nhận diện người nói) **chạy lần lượt** giữa các việc, kể cả khi mở nhiều cửa sổ `2_DUNG_VIDEO.bat`, để GTX 1080 không hết bộ nhớ. Remotion chia đều số nhân CPU cho các bản đang dựng.
+- Nhanh nhất khi một việc đang chờ AI (Antigravity) thì việc kia đang dựng/xuất hình.
+
 ### Sửa bằng lời
 
 ```

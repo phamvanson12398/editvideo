@@ -98,6 +98,8 @@ button.primary:disabled { opacity: .5; cursor: default; }
     <div class="log" id="log">Chưa có việc nào.</div>
     <div class="summary" id="summary"></div>
     <div class="outputs" id="outputs"></div>
+    <h2 style="margin-top:22px">Tất cả các việc <span class="muted">(chạy song song; bấm để xem)</span></h2>
+    <div id="jobs" class="muted">Chưa có việc nào.</div>
   </section>
 </main>
 <script>
@@ -148,9 +150,20 @@ $('#go').onclick = async () => {
   const j = await r.json(); watch(j.job);
 };
 
+async function refreshJobs() {
+  const list = await (await fetch('/api/jobs')).json();
+  const box = $('#jobs');
+  if (!list.length) return;
+  const label = {queued: 'đang chờ', running: 'đang chạy', done: 'xong', error: 'lỗi'};
+  box.innerHTML = list.map(j => `<div style="cursor:pointer;padding:4px 0" data-id="${j.id}">` +
+    `<b class="status ${j.status}">${label[j.status]}</b> · ${j.kind === 'edit' ? 'Dựng' : 'Sửa'} · ` +
+    `${(j.params.video || j.params.plan || '').split(/[\\/]/).pop()} ${j.params.command || j.params.instruction ? '· ' + (j.params.command || j.params.instruction) : ''}</div>`).join('');
+  box.querySelectorAll('[data-id]').forEach(el => el.onclick = () => watch(el.dataset.id));
+}
+setInterval(refreshJobs, 3000); refreshJobs();
+
 function watch(id) {
   since = 0; $('#log').textContent = ''; $('#outputs').innerHTML = ''; $('#summary').textContent = '';
-  $('#go').disabled = true;
   clearInterval(poll);
   poll = setInterval(async () => {
     const j = await (await fetch(`/api/jobs/${id}?since=${since}`)).json();
@@ -159,7 +172,7 @@ function watch(id) {
     $('#status').textContent = {queued: 'đang chờ', running: 'đang dựng...', done: 'xong', error: 'lỗi'}[j.status];
     $('#status').className = 'status ' + j.status;
     if (j.status === 'done' || j.status === 'error') {
-      clearInterval(poll); $('#go').disabled = !videoPath;
+      clearInterval(poll);
       if (j.error) $('#log').textContent += '\n' + j.error;
       $('#summary').textContent = j.summary || '';
       render(j);
