@@ -29,6 +29,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
+tasklist /fi "imagename eq director.exe" | find /i "director.exe" >nul
+if not errorlevel 1 (
+  echo Director dang chay ^(Studio hoac cua so dung video^). Tam tat de cai dat...
+  taskkill /f /im director.exe >nul 2>nul
+  timeout /t 2 >nul
+)
 if not exist ".venv\Scripts\python.exe" (
   echo [1/4] Tao moi truong Python ^(.venv^)...
   python -m venv .venv || goto :loi

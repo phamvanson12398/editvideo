@@ -7,11 +7,17 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+tasklist /fi "imagename eq director.exe" | find /i "director.exe" >nul
+if not errorlevel 1 (
+  echo Director dang chay ^(Studio hoac cua so dung video^). Tam tat de cai dat...
+  taskkill /f /im director.exe >nul 2>nul
+  timeout /t 2 >nul
+)
 echo Cai PyTorch ban CUDA 12.6 (ho tro GTX 10xx) + Demucs tach thoai/nhac
 echo va thu vien CUDA cho Whisper chay bang GPU. Dung luong tai ve khoang 3 GB.
 echo.
 ".venv\Scripts\python.exe" -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126 || goto :loi
-".venv\Scripts\python.exe" -m pip install -e ".[separation]" || goto :loi
+".venv\Scripts\python.exe" -m pip install "demucs>=4.0" || goto :loi
 ".venv\Scripts\python.exe" -m pip install nvidia-cublas-cu12 nvidia-cudnn-cu12 || goto :loi
 echo.
 ".venv\Scripts\director.exe" doctor
