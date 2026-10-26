@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+node_modules/
+remotion/out/
+jobs/
+.director/
+*.egg-info/
+dist/
+build/
+assets/cache/
+studio_data/
