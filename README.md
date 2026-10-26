@@ -25,11 +25,11 @@ director studio            # giao diện web tại http://127.0.0.1:7860
 | Khung hình | Mọi tỉ lệ theo lệnh (9:16, 16:9, 4:5, 1:1, 21:9, điện ảnh, 1080x1350...), nhiều khung một lúc; bám mặt nhân vật; **có sẵn sub thì giữ trọn khung + nền mờ để không mất chữ** |
 | Hiệu ứng | Gần 200 mục: chuyển cảnh, camera, tốc độ, 15 kiểu phụ đề, chữ/tiêu đề, hiệu ứng manga (đường tập trung, gân giận, mồ hôi...), màu, phong cách hình, hạt, bố cục, âm thanh, 12 combo theo cảm xúc |
 | Âm thanh | 48 tiếng động tự tổng hợp (không lo bản quyền), nhạc nền tự giảm khi có thoại, tắt nhạc trước câu sốc, chuẩn âm lượng -14 LUFS |
-| Claude (tuỳ chọn) | Đọc lời thoại + xem khung hình để hiểu câu chuyện, tên nhân vật; lập kế hoạch dựng; **tự xem bản nháp, chấm điểm, sửa** (2 vòng); sửa bằng lời nói |
+| AI Antigravity (tuỳ chọn) | **Xem cả video** + đọc lời thoại để hiểu câu chuyện, tên nhân vật; lập kế hoạch dựng; **tự xem bản nháp, chấm điểm, sửa** (2 vòng); sửa bằng lời nói |
 | Xuất | MP4 cho từng khung, file EDL/OTIO để mở trong DaVinci Resolve / Premiere chỉnh tiếp |
 | Ghi nhớ | Nhận ra bộ phim đã dựng trước đây: dùng lại tên & màu nhân vật, phong cách; ghi nhớ các yêu cầu sửa của bạn |
 
-Không có API Claude, tool vẫn chạy đầy đủ bằng bộ lập kế hoạch offline.
+Không có AI, tool vẫn chạy đầy đủ bằng bộ lập kế hoạch offline.
 
 ---
 
@@ -42,7 +42,7 @@ Không có API Claude, tool vẫn chạy đầy đủ bằng bộ lập kế ho�
 | `3_SUA_BAN_DUNG.bat` | Sửa bản dựng gần nhất bằng lời (hoặc kéo thả một file `*.plan.json` vào để sửa bản đó) |
 | `4_STUDIO.bat` | Mở giao diện web trên trình duyệt |
 | `5_CAI_THEM_GPU.bat` | Cài PyTorch CUDA 12.6 (hợp GTX 10xx), Demucs và thư viện CUDA cho Whisper chạy bằng GPU |
-| `6_DAT_API_CLAUDE.bat` | Lưu API key Claude để tool dùng AI lập kế hoạch và tự xem lại bản nháp |
+| `6_CAI_ANTIGRAVITY.bat` | Cài Antigravity CLI (`agy`) và đăng nhập tài khoản Google để tool dùng AI lập kế hoạch và tự xem lại bản nháp (không cần API key) |
 
 Trước khi chạy `1_CAI_DAT.bat`, máy cần có sẵn Python 3.11, Node.js LTS và ffmpeg (xem mục dưới).
 
@@ -93,9 +93,16 @@ Tải hai công cụ chạy bằng Vulkan (không cần CUDA, chạy tốt trên
 
 Khi có RIFE, hiệu ứng làm chậm cho video người thật dùng nội suy khung mượt. Thêm `--upscale` để nâng nét x2 trước khi dựng (hợp khi video gốc 720p mà cần cắt khung dọc).
 
-### 5. Claude (tuỳ chọn, để tool "thông minh" nhất)
+### 5. AI: Antigravity CLI (tuỳ chọn, để tool "thông minh" nhất)
 
-Đặt biến môi trường `ANTHROPIC_API_KEY` (hoặc đăng nhập bằng `ant auth login`). Mặc định dùng model `claude-opus-5-5`; đổi bằng biến `DIRECTOR_MODEL`. Tắt Claude cho một lần chạy: `--no-llm`.
+Tool gọi **Antigravity CLI** (`agy`), công cụ dòng lệnh của Google thay cho Gemini CLI. Đăng nhập một lần bằng tài khoản Google, **không cần API key**.
+
+1. Chạy `6_CAI_ANTIGRAVITY.bat`: cài `agy` (nếu chưa có) rồi mở `agy` để bạn đăng nhập.
+2. Chạy `director doctor`, thấy dòng `AI (Antigravity)` báo OK là xong.
+
+Mỗi lần cần AI, tool ghi yêu cầu (lời thoại, ảnh khung hình, video bản nháp) vào một thư mục tạm, chạy `agy -p ... --output-format json` trong đó rồi đọc kết quả. Tool không cho `agy` quyền sửa file hay chạy lệnh. Truyền thêm tuỳ chọn cho `agy` (ví dụ chọn model) bằng biến môi trường `DIRECTOR_AGY_ARGS`; đường dẫn `agy` khác mặc định thì đặt `AGY_BIN`. Tắt AI cho một lần chạy: `--no-llm`.
+
+Hãy tự kiểm tra điều khoản sử dụng của Google cho việc gọi `agy` từ công cụ khác.
 
 ### 6. Nhận diện người nói (tuỳ chọn)
 
@@ -114,10 +121,10 @@ Khi có RIFE, hiệu ứng làm chậm cho video người thật dùng nội suy
 | `--preset anime-drama` | Chọn preset (xem `director styles`) |
 | `--variants 3` | Xuất 3 phương án: chuẩn / mạnh tay / an toàn |
 | `--draft` | Bản nháp nhanh để xem trước |
-| `--critic 2` | Số vòng tự xem lại và sửa (cần Claude) |
+| `--critic 2` | Số vòng tự xem lại và sửa (cần AI) |
 | `--genre anime` | Ghi đè thể loại nếu tool nhận sai |
 | `--upscale` | Nâng nét x2 bằng Real-ESRGAN |
-| `--no-llm` | Không dùng Claude |
+| `--no-llm` | Không dùng AI |
 | `-o outputs` | Thư mục kết quả |
 
 Kết quả nằm trong `outputs/`: `<tên>_<khung>.mp4`, `<tên>.edl`, `<tên>.otio`. Thư mục `outputs/jobs/<tên>_xxxx/` chứa phân tích (`index.json`), kế hoạch dựng (`*.plan.json`), phong cách (`style.json`) và nhận xét của vòng tự xem lại.
@@ -139,7 +146,7 @@ director revise outputs/jobs/tap12_xxxx/tap12.plan.json "intro nhanh hơn"
 director revise outputs/jobs/tap12_xxxx/tap12.plan.json "bỏ đoạn 0:40, tiêu đề là: Bí mật động trời"
 ```
 
-Có Claude thì sửa được mọi kiểu yêu cầu. Không có Claude thì hiểu được các yêu cầu về phong cách, khung hình, nhịp, bỏ đoạn theo thời điểm, đổi tiêu đề. Bản cũ được lưu trong `history/`.
+Có AI thì sửa được mọi kiểu yêu cầu. Không có AI thì hiểu được các yêu cầu về phong cách, khung hình, nhịp, bỏ đoạn theo thời điểm, đổi tiêu đề. Bản cũ được lưu trong `history/`.
 
 ### Tài nguyên của bạn
 
@@ -161,7 +168,7 @@ director/
   perception/   phân tích video: âm thanh, cảnh, hình ảnh (thể loại, mặt, nhân vật, sub có sẵn), lời thoại, ngữ nghĩa
   style/        Style DNA, preset, hiểu lệnh tiếng Việt
   effects/      thư viện hiệu ứng (catalog), combo, quy tắc dùng hiệu ứng
-  agent/        planner offline, Claude (hiểu truyện, lập kế hoạch, sửa), vòng tự xem lại
+  agent/        planner offline, AI qua Antigravity CLI (hiểu truyện, lập kế hoạch, sửa), vòng tự xem lại
   plan/         schema kế hoạch dựng, khung hình, compiler (draft theo thời gian gốc → timeline)
   render/       chuẩn bị clip (ffmpeg), trộn âm thanh, gọi Remotion, tiếng động tổng hợp, LUT
   aiops/        Real-ESRGAN / RIFE (Vulkan)

@@ -1,4 +1,4 @@
-"""Critic loop: render a fast draft, look at it (automatic checks + Claude vision), fix the plan, repeat."""
+"""Critic loop: render a fast draft, look at it (automatic checks + AI vision), fix the plan, repeat."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from ..style.dna import StyleDNA
 from ..utils.ffmpeg import run, run_stderr
 from ..utils.log import log
 from .director import _validate_drafts
-from .llm import ask_json, image_block
+from .llm import ask_json, image_block, provider, video_block
 from .prompts import PLAN_SCHEMA, SYSTEM_DIRECTOR
 
 PASS_SCORE = 8.0
@@ -87,6 +87,8 @@ def critique_loop(plan: EditPlan, idx: VideoIndex, style: StyleDNA, job: Path, n
         issues = auto_check(plan, style, video)
         frames = sample_frames(plan, video, job / "critic" / f"r{r}")
         content: list[dict] = []
+        if provider() in ("antigravity", "gemini"):
+            content += [{"type": "text", "text": "[toàn bộ bản nháp, có âm thanh]"}, video_block(video)]
         for t, p in frames:
             content.append({"type": "text", "text": f"[bản nháp t={t:.2f}s]"})
             content.append(image_block(p, 640))

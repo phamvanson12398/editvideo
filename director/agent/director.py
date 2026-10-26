@@ -14,7 +14,7 @@ from ..plan.schema import DraftEffect, EditPlan, PlanDraft
 from ..style.dna import StyleDNA
 from ..style.parse import parse_style
 from ..utils.log import log
-from .llm import ask_json, image_block
+from .llm import ask_json, image_block, provider, video_block
 from .planner_rules import plan_rules
 from .prompts import PLAN_SCHEMA, STYLE_FIELDS, SYSTEM_DIRECTOR
 
@@ -79,7 +79,7 @@ so the style matches the user's command exactly. Do not invent requirements the 
     data = ask_json(SYSTEM_DIRECTOR, prompt, effort="medium", max_tokens=8000)
     patch = data.get("patch") or {}
     new = style.merged(patch)
-    log(f"Claude hiểu lệnh: {data.get('explain', '')}")
+    log(f"AI hiểu lệnh: {data.get('explain', '')}")
     return new
 
 
@@ -97,6 +97,10 @@ def understand_story(idx: VideoIndex, job: Path) -> None:
                 content.append({"type": "text", "text": f"[ảnh nhân vật {c.id}]"})
                 content.append(image_block(c.thumbnail, 256))
         content += keyframe_blocks(idx)
+        if provider() in ("antigravity", "gemini") and idx.source.duration <= 3600:
+            # Gemini watches the whole video (picture + sound), not just sampled frames
+            content.append({"type": "text", "text": "[toàn bộ video gốc]"})
+            content.append(video_block(idx.source.path))
         content.append({"type": "text", "text": """Analyse this video for editing. Return JSON:
 {"summary": "2-4 câu tóm tắt câu chuyện (tiếng Việt)",
  "characters": {"C0": {"name": "tên nếu biết từ lời thoại, hoặc vai như 'Mẹ chồng'", "role": "nữ chính|phản diện|..."}},
@@ -108,7 +112,7 @@ Only include sentences whose emotion/character you are correcting. Times are sou
         data = ask_json(SYSTEM_DIRECTOR, content, effort="high", max_tokens=16000)
         cache.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     apply_story(idx, data)
-    log(f"Claude tóm tắt: {idx.story_summary[:200]}")
+    log(f"AI tóm tắt: {idx.story_summary[:200]}")
 
 
 def apply_story(idx: VideoIndex, data: dict) -> None:
@@ -202,7 +206,7 @@ Return JSON: {{"parts": [PlanDraft, ...]}} with exactly {style.parts} part(s).""
     ]
     drafts = ask_json(SYSTEM_DIRECTOR, content, validate=lambda d: _validate_drafts(d, D), effort="high", max_tokens=64000)
     for d in drafts:
-        log(f"Claude lên kế hoạch: {len(d.clips)} đoạn, {len(d.effects)} hiệu ứng. {d.notes}")
+        log(f"AI lên kế hoạch: {len(d.clips)} đoạn, {len(d.effects)} hiệu ứng. {d.notes}")
     return drafts
 
 
@@ -271,5 +275,5 @@ Change ONLY what the request needs; keep everything else identical. Return JSON:
 
     data, draft = ask_json(SYSTEM_DIRECTOR, content, validate=validate, effort="high", max_tokens=48000)
     new_style = style.merged(data.get("style_patch") or {})
-    log(f"Claude sửa: {data.get('explain', '')}")
+    log(f"AI sửa: {data.get('explain', '')}")
     return draft, new_style

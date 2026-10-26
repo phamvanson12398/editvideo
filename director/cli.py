@@ -168,7 +168,8 @@ def cmd_doctor(a: argparse.Namespace) -> int:
         row(None, "PyTorch", "chỉ cần cho Demucs/pyannote")
     for b in ("realesrgan-ncnn-vulkan", "rife-ncnn-vulkan"):
         row(True if shutil.which(b) or os.environ.get(b.split("-")[0].upper() + "_BIN") else None, b, "tuỳ chọn (nâng nét / slow motion bằng GPU)")
-    row(available(), "Claude API", "ANTHROPIC_API_KEY hoặc `ant auth login` (không có vẫn chạy offline)")
+    from .agent.llm import provider_label
+    row(available(), f"AI ({provider_label()})", "cài & đăng nhập Antigravity CLI (6_CAI_ANTIGRAVITY.bat); không có vẫn chạy offline")
     return 0
 
 
@@ -200,7 +201,7 @@ def cmd_sfx(a: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="director", description="Director: tool edit video bằng AI (Remotion + ffmpeg + Claude)")
+    p = argparse.ArgumentParser(prog="director", description="Director: tool edit video bằng AI (Remotion + ffmpeg + Antigravity)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("edit", help="Dựng video từ 1 file video gốc")
@@ -211,9 +212,9 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--preset", help="Preset phong cách (xem `director styles`)")
     e.add_argument("-o", "--out", default="outputs", help="Thư mục kết quả")
     e.add_argument("--draft", action="store_true", help="Chỉ dựng bản nháp nhanh (độ phân giải thấp)")
-    e.add_argument("--llm", action="store_true", help="Bắt buộc dùng Claude")
-    e.add_argument("--no-llm", action="store_true", help="Không dùng Claude (planner offline)")
-    e.add_argument("--critic", type=int, default=2, help="Số vòng tự xem lại & sửa (cần Claude)")
+    e.add_argument("--llm", action="store_true", help="Bắt buộc dùng AI (Antigravity)")
+    e.add_argument("--no-llm", action="store_true", help="Không dùng AI (planner offline)")
+    e.add_argument("--critic", type=int, default=2, help="Số vòng tự xem lại & sửa (cần AI)")
     e.add_argument("--variants", type=int, default=1, choices=[1, 2, 3], help="Số phương án (chuẩn / mạnh tay / an toàn)")
     e.add_argument("--genre", choices=["anime", "cartoon3d", "live", "gameplay"], help="Ghi đè thể loại tự nhận")
     e.add_argument("--whisper-model", help="large-v3-turbo | medium | small ...")

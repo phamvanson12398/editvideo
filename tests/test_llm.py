@@ -97,3 +97,79 @@ def test_apply_story(idx):
     assert idx.story_summary.startswith("Mai")
     assert idx.sentences[0].emotion == "sad"
     assert idx.story[0].type == "twist"
+
+
+def test_provider_selection(monkeypatch, tmp_path):
+    for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "DIRECTOR_LLM", "DIRECTOR_NO_LLM", "AGY_BIN", "LOCALAPPDATA"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert llm.provider() is None
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    assert llm.provider() is None  # API providers only when chosen explicitly
+    fake = tmp_path / "agy"
+    fake.write_text("#!/bin/sh\n")
+    fake.chmod(0o755)
+    assert llm.provider() == "antigravity"
+    monkeypatch.setenv("DIRECTOR_LLM", "claude")
+    assert llm.provider() == "claude"
+
+
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="fake agy is a shell script")
+def test_antigravity_cli_roundtrip(monkeypatch, tmp_path):
+    """Fake `agy`: checks the request folder and answers with the documented JSON envelope."""
+    import base64
+    import sys
+
+    script = tmp_path / "fake_agy.py"
+    script.write_text(
+        "import json, os, sys\n"
+        "req = open('REQUEST.md', encoding='utf-8').read()\n"
+        "ok = '-p' in sys.argv and '--output-format' in sys.argv and os.path.exists('img_000.jpg') and 'xin chào' in req\n"
+        "print(json.dumps({'conversation_id': 'c1', 'status': 'SUCCESS', 'response': json.dumps({'ok': ok})}))\n",
+        encoding="utf-8")
+    runner = tmp_path / "agy"
+    runner.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n')
+    runner.chmod(0o755)
+    monkeypatch.setenv("AGY_BIN", str(runner))
+    monkeypatch.setenv("DIRECTOR_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("DIRECTOR_LLM", raising=False)
+    img = {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(b"\xff\xd8jpg").decode()}}
+    out = llm.ask_json("sys", [{"type": "text", "text": "xin chào"}, img])
+    assert out == {"ok": True}
+    assert not any((tmp_path / "home" / "ai_tmp").iterdir())  # temp request folder cleaned up
+
+
+def test_gemini_adapter(monkeypatch):
+    """Neutral content blocks -> Gemini contents; JSON repair turns use role 'model'."""
+    import base64
+
+    seen = {}
+
+    class Resp:
+        def __init__(self, text):
+            self.text = text
+            self.candidates = []
+
+    class Models:
+        def __init__(self):
+            self.n = 0
+
+        def generate_content(self, model, contents, config):
+            seen.setdefault("calls", []).append((model, contents, config))
+            self.n += 1
+            return Resp("not json" if self.n == 1 else '{"ok": true}')
+
+    class FakeClient:
+        models = Models()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "y")
+    monkeypatch.setenv("DIRECTOR_LLM", "gemini")
+    monkeypatch.setattr(llm, "_gclient", FakeClient())
+    img = {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(b"\xff\xd8jpg").decode()}}
+    out = llm.ask_json("sys", [{"type": "text", "text": "xin chào"}, img])
+    assert out == {"ok": True}
+    model, contents, config = seen["calls"][1]
+    assert [c.role for c in contents] == ["user", "model", "user"]
+    assert contents[0].parts[1].inline_data.mime_type == "image/jpeg"
+    assert config.response_mime_type == "application/json" and config.system_instruction == "sys"

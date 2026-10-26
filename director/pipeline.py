@@ -8,6 +8,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .agent.llm import provider_label
 from .agent.planner_rules import plan_rules
 from .perception.analyze import analyze
 from .perception.schema import VideoIndex
@@ -64,7 +65,7 @@ def llm_enabled(opt: JobOptions) -> bool:
 
     ok = available()
     if opt.use_llm and not ok:
-        warn("Chưa cấu hình API Claude (ANTHROPIC_API_KEY hoặc `ant auth login`): dùng bộ lập kế hoạch offline.")
+        warn("Chưa có Antigravity CLI (chạy 6_CAI_ANTIGRAVITY.bat để cài và đăng nhập): dùng bộ lập kế hoạch offline.")
     return ok
 
 
@@ -160,7 +161,7 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     style = resolve_style(idx, opt, use_llm)
     (job / "style.json").write_text(style.model_dump_json(indent=2), encoding="utf-8")
     outputs = parse_frames(style.frames, idx.source.width, idx.source.height)
-    log(f"Phong cách: {style.name} | khung: {', '.join(o.id for o in outputs)} | LLM: {'bật' if use_llm else 'tắt'}")
+    log(f"Phong cách: {style.name} | khung: {', '.join(o.id for o in outputs)} | AI: {provider_label() if use_llm else 'tắt (offline)'}")
 
     variants = make_drafts(idx, style, opt, use_llm)
     summaries = []

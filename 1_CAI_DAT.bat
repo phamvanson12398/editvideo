@@ -58,6 +58,7 @@ echo   CAI DAT XONG!
 echo   - Dung video: keo tha video vao file 2_DUNG_VIDEO.bat
 echo   - Giao dien web: chay 4_STUDIO.bat
 echo   - Muon tach thoai/nhac bang GPU: chay 5_CAI_THEM_GPU.bat
+echo   - Muon dung AI Antigravity: chay 6_CAI_ANTIGRAVITY.bat
 echo ============================================
 pause
 exit /b 0

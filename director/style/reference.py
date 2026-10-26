@@ -2,7 +2,7 @@
 
 Measures pacing (shot length, pauses), cut accents (white flashes), on-screen text (captions: position,
 color, line length), color grade (warmth, saturation, contrast -> closest built-in LUT) and energy
-(motion + cut rate -> effect budget). With Claude available, keyframes are also described by the model."""
+(motion + cut rate -> effect budget). With an AI model available, keyframes are also described by the model."""
 
 from __future__ import annotations
 
@@ -149,9 +149,9 @@ Describe the caption look (font weight, colors, outline, animation), title/stick
 (zooms, shakes, manga lines, emojis, color grade). Return {{"patch": {{...}}, "explain": "tiếng Việt"}}."""})
             data = ask_json(SYSTEM_DIRECTOR, content, effort="medium", max_tokens=8000)
             style = style.merged(data.get("patch") or {})
-            log(f"  Claude mô tả phong cách mẫu: {data.get('explain', '')}")
+            log(f"  AI mô tả phong cách mẫu: {data.get('explain', '')}")
         except Exception as e:
-            warn(f"Claude không phân tích được video mẫu: {e}")
+            warn(f"AI không phân tích được video mẫu: {e}")
     return style
 
 
