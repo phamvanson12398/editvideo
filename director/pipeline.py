@@ -41,6 +41,7 @@ class JobOptions:
     export_timeline: bool = True
     remember: bool = True
     upscale: bool = False
+    reference: Path | None = None  # "edit like this video"
 
 
 @dataclass
@@ -67,10 +68,19 @@ def llm_enabled(opt: JobOptions) -> bool:
     return ok
 
 
+def _ref_dir(opt: JobOptions) -> Path:
+    ref = Path(opt.reference)  # type: ignore[arg-type]
+    return Path(opt.out_dir) / "jobs" / f"ref_{ref.stem}"
+
+
 def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
     from .style.presets import get_preset
 
     base = get_preset(opt.preset) if opt.preset else None
+    if opt.reference:
+        from .style.reference import style_from_reference
+
+        base = style_from_reference(opt.reference, _ref_dir(opt), base, use_llm)
     style = parse_style(opt.command, idx.genre, base)
     if use_llm and opt.command.strip():
         try:

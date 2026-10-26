@@ -500,3 +500,33 @@ editvideo/
 - **Giọng nói nhân bản / sửa lời bằng AI** (nếu thêm sau này): chỉ dùng với giọng của chính bạn hoặc người đã đồng ý.
 - **Chi phí API:** Critic Loop tốn nhất. Có giới hạn vòng, cache, và chế độ "tiết kiệm".
 - **8 GB VRAM:** một số model AI nặng phải chạy ở độ phân giải thấp hoặc theo đoạn. Chừa sẵn tuỳ chọn chuyển sang cloud GPU (Replicate, fal.ai) cho từng hiệu ứng.
+
+---
+
+## 9. Trạng thái triển khai (bản 0.1)
+
+| Phần trong thiết kế | Trạng thái | Mã nguồn |
+|---|---|---|
+| ① Perception: âm thanh, khoảng lặng, beat, điểm bùng nổ, độ ồn LUFS | Xong (numpy, không cần GPU) | `director/perception/audio.py` |
+| Chuyển cảnh, keyframe | Xong (ffmpeg scene score) | `perception/scenes.py` |
+| Nhận thể loại, dò mặt (người thật + hoạt hình), gom nhóm nhân vật, dò chữ có sẵn trên hình, độ chuyển động/độ nét | Xong | `perception/vision.py` |
+| Chép lời (Whisper), OCR phụ đề có sẵn, tách thoại/nhạc (Demucs), nhận diện người nói (pyannote), câu nói lại | Xong, các model nặng là tuỳ chọn | `perception/speech.py` |
+| Cảm xúc, nhân vật đang nói, highlight, nhịp truyện (offline) | Xong (luật), Claude tinh chỉnh khi có API | `perception/semantics.py`, `agent/director.py` |
+| ② Video Index (cache) | Xong (`index.json` trong thư mục job) | `perception/analyze.py` |
+| ③ Style DNA: preset, hiểu lệnh tiếng Việt, học từ video mẫu, preset của người dùng | Xong | `style/` |
+| ④ Director Agent: planner offline + Claude (kế hoạch dựng, sửa bằng lời) | Xong | `agent/planner_rules.py`, `agent/director.py` |
+| ⑤ Effect Registry: 158 hiệu ứng + 12 combo + quy tắc dùng | Xong | `effects/catalog.py`, `effects/rules.py` |
+| ⑥ Render: chuẩn bị clip (ffmpeg, NVENC), Remotion (đổi khung, camera, chuyển cảnh, phụ đề, chữ, manga, hạt, phong cách, bố cục), trộn âm thanh | Xong | `render/`, `remotion/src/` |
+| ⑦ Critic Loop (Claude xem bản nháp, chấm điểm, sửa) + kiểm tra tự động | Xong (cần API để chạy vòng Claude) | `agent/critic.py` |
+| ⑧ Studio (web): tải video, lệnh, khung, phương án, tiến trình, xem/tải, sửa bằng lời, chọn phương án | Xong (FastAPI + HTML) | `studio/` |
+| Khung hình theo lệnh, nhiều khung, vùng an toàn nền tảng, giữ trọn sub có sẵn | Xong | `plan/frames.py`, `plan/compiler.py` |
+| Bộ nhớ bộ phim & sở thích | Xong (SQLite) | `memory/store.py` |
+| Xuất EDL / OTIO | Xong | `export/timeline.py` |
+| Nâng nét / slow motion GPU | Xong qua Real-ESRGAN & RIFE ncnn-Vulkan (tuỳ chọn) | `aiops/ncnn.py` |
+| Tiếng động & LUT không lo bản quyền | Xong (48 SFX, 12 LUT tạo bằng code) | `render/sfx_synth.py`, `render/luts.py` |
+
+**Khác với bản thiết kế ban đầu (đã điều chỉnh khi code):**
+- Remotion dựng cả lớp video (đổi khung, camera, chuyển cảnh chồng hình) chứ không chỉ lớp phủ. Phần nặng (cắt, tốc độ, LUT, nền mờ) vẫn do ffmpeg làm trước, nên Remotion chỉ ghép.
+- Cache theo nội dung ở mức từng clip đã chuẩn bị và kết quả phân tích; Remotion render lại cả video mỗi lần (chưa cache theo đoạn).
+- Tách nền người (RobustVideoMatting/SAM 2) chưa tích hợp; các hiệu ứng cần tách nền (dolly zoom, giữ một màu theo chủ thể) dùng bản xấp xỉ không cần AI.
+- Đã kiểm thử thật toàn bộ quy trình offline (không có API Claude, không có GPU); nhánh Claude được kiểm thử bằng client giả lập.

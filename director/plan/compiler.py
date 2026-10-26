@@ -426,6 +426,22 @@ def compile_plan(
     effects, sfx, transitions = expand(draft, style)
     effects = apply_time_effects(wclips, effects, sfx, idx.genre)
 
+    # whole-video grading switches and per-clip framing overrides
+    grade: dict[str, bool] = {}
+    if style.color.auto_color and idx.genre not in ("anime", "cartoon3d"):
+        grade["auto_color"] = True
+    for e in list(effects):
+        if e.id in ("auto_color", "match_color", "sharpen", "upscale"):
+            grade[e.id] = True
+            effects.remove(e)
+        elif e.id in ("fit_blur", "fit_pad", "stacked_title"):
+            c = _resolve(wclips, e.orig, e.target, e.at)
+            if c:
+                c.reframe = "fit-blur" if e.id == "fit_blur" else "fit-pad"
+            if e.id == "stacked_title" and draft.title:
+                effects.append(IEffect("title_reveal", e.at, max(2.0, e.dur), {"text": draft.title}, orig=e.orig, target=e.target))
+            effects.remove(e)
+
     # color_pop needs ffmpeg at prep
     for e in list(effects):
         if e.id == "color_pop":
@@ -626,6 +642,7 @@ def compile_plan(
         audio=audio,
         lut=draft.lut,
         lut_intensity=draft.lut_intensity,
+        grade=grade,
         hardsub={"x": hs.x, "y": hs.y, "w": hs.w, "h": hs.h} if hs.present else None,
         characters=chars,
         genre=idx.genre,

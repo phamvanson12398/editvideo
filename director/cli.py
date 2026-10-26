@@ -26,6 +26,7 @@ def cmd_edit(a: argparse.Namespace) -> int:
         use_llm=False if a.no_llm else (True if a.llm else None), critic_rounds=a.critic, variants=a.variants,
         genre=a.genre, whisper_model=a.whisper_model, language=a.lang, separate=not a.no_separate,
         force_analyze=a.reanalyze, export_timeline=not a.no_export, remember=not a.no_memory, upscale=a.upscale,
+        reference=Path(a.ref) if a.ref else None,
     )
     res = run_job(a.video, opt)
     print("\n" + res.summary)
@@ -131,6 +132,16 @@ def cmd_doctor(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_learn(a: argparse.Namespace) -> int:
+    from .agent.llm import available
+    from .style.reference import save_style, style_from_reference
+
+    st = style_from_reference(a.ref, Path(a.out) / "jobs" / f"ref_{Path(a.ref).stem}", use_llm=available() and not a.no_llm)
+    p = save_style(st, a.name)
+    print(f"Đã lưu phong cách '{a.name}' tại {p}. Dùng: director edit video.mp4 --preset {a.name}")
+    return 0
+
+
 def cmd_studio(a: argparse.Namespace) -> int:
     from .studio.server import serve
 
@@ -170,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--reanalyze", action="store_true", help="Phân tích lại video (bỏ cache)")
     e.add_argument("--no-export", action="store_true", help="Không xuất EDL/OTIO")
     e.add_argument("--no-memory", action="store_true", help="Không dùng/ghi bộ nhớ bộ phim & sở thích")
+    e.add_argument("--ref", help="Video mẫu: dựng theo phong cách của video này")
     e.add_argument("--upscale", action="store_true", help="Nâng nét x2 bằng Real-ESRGAN anime (cần realesrgan-ncnn-vulkan, GPU)")
     e.set_defaults(fn=cmd_edit)
 
@@ -189,6 +201,13 @@ def main(argv: list[str] | None = None) -> int:
     an.add_argument("--no-separate", action="store_true")
     an.add_argument("--reanalyze", action="store_true")
     an.set_defaults(fn=cmd_analyze)
+
+    ls = sub.add_parser("learn-style", help="Học phong cách từ video mẫu và lưu thành preset")
+    ls.add_argument("ref")
+    ls.add_argument("--name", required=True)
+    ls.add_argument("-o", "--out", default="outputs")
+    ls.add_argument("--no-llm", action="store_true")
+    ls.set_defaults(fn=cmd_learn)
 
     sub.add_parser("styles", help="Danh sách preset phong cách").set_defaults(fn=cmd_styles)
     sub.add_parser("effects", help="Danh sách hiệu ứng").set_defaults(fn=cmd_effects)

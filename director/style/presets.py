@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+
 from .dna import StyleDNA
 
 _PRESETS: dict[str, dict] = {
@@ -90,13 +94,28 @@ _PRESETS: dict[str, dict] = {
 GENRE_DEFAULT = {"anime": "anime-drama", "cartoon3d": "anime-drama", "live": "tiktok-nang-dong", "gameplay": "tiktok-nang-dong"}
 
 
+def _user_dir() -> Path:
+    return Path(os.environ.get("DIRECTOR_HOME") or Path.home() / ".director") / "styles"
+
+
 def list_presets() -> dict[str, str]:
-    return {k: v.get("description", "") for k, v in _PRESETS.items()}
+    out = {k: v.get("description", "") for k, v in _PRESETS.items()}
+    d = _user_dir()
+    if d.exists():
+        for p in sorted(d.glob("*.json")):
+            try:
+                out[p.stem] = "(của bạn) " + json.loads(p.read_text(encoding="utf-8")).get("description", "")
+            except Exception:
+                continue
+    return out
 
 
 def get_preset(name: str) -> StyleDNA:
+    user = _user_dir() / f"{name}.json"
+    if user.exists():
+        return StyleDNA.model_validate_json(user.read_text(encoding="utf-8"))
     if name not in _PRESETS:
-        raise KeyError(f"Không có preset phong cách '{name}'. Có: {', '.join(_PRESETS)}")
+        raise KeyError(f"Không có preset phong cách '{name}'. Có: {', '.join(list_presets())}")
     return StyleDNA(name=name).merged(_PRESETS[name])
 
 

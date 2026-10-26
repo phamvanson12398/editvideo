@@ -18,6 +18,11 @@ ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "assets"
 
 
+def ffmpeg_path(p: Path) -> str:
+    """Path usable inside an ffmpeg filter argument (Windows drive colons must be escaped)."""
+    return p.resolve().as_posix().replace(":", "\\:").replace("'", "\\'")
+
+
 def _atempo_chain(speed: float) -> str:
     parts = []
     s = speed
@@ -59,8 +64,13 @@ def clip_filters(plan: EditPlan, clip: Clip, fps: float, lut: Path | None, extra
         filters.append("scale=iw*2:ih*2:flags=lanczos")
     if max_height:
         filters.append(f"scale=-2:'min({max_height},ih)'")
+    if plan.grade.get("auto_color") or plan.grade.get("match_color"):
+        # gentle, temporally smoothed levels normalisation (also evens out exposure between shots)
+        filters.append("normalize=smoothing=24:independence=0.3:strength=0.35")
     if lut is not None:
-        filters.append(f"lut3d=file='{lut.as_posix()}'")
+        filters.append(f"lut3d=file='{ffmpeg_path(lut)}'")
+    if plan.grade.get("sharpen") or upscale:
+        filters.append("unsharp=5:5:0.5:5:5:0.0")
     filters.extend(extra)
     filters.append("format=yuv420p")
     return filters, start, read
@@ -68,6 +78,7 @@ def clip_filters(plan: EditPlan, clip: Clip, fps: float, lut: Path | None, extra
 
 def prepare_clips(plan: EditPlan, public_dir: Path, *, draft: bool = False, workers: int = 3, upscale: bool = False) -> None:
     """Writes public_dir/clips/<id>.mp4 for every clip (cached by content hash)."""
+    upscale = upscale or bool(plan.grade.get("upscale"))
     out_dir = public_dir / "clips"
     out_dir.mkdir(parents=True, exist_ok=True)
     fps = plan.outputs[0].fps if plan.outputs else 30.0

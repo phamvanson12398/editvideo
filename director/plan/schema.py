@@ -241,6 +241,7 @@ class EditPlan(BaseModel):
     audio: AudioPlan = Field(default_factory=AudioPlan)
     lut: Optional[str] = None
     lut_intensity: float = 0.7
+    grade: dict[str, bool] = Field(default_factory=dict)  # auto_color / match_color / sharpen / upscale (ffmpeg at prep)
     hardsub: Optional[dict] = None  # {x,y,w,h} normalized source coords of burned-in text
     characters: dict[str, dict] = Field(default_factory=dict)  # id -> {name, color}
     genre: str = "unknown"
