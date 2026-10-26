@@ -166,3 +166,20 @@ def test_added_text_follows_video_language(tmp_path: Path):
     style.text_language = "en"
     plan = compile_plan(plan_rules(idx, style)[0], idx, style, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
     assert "Earlier..." in [e.params.get("text") for e in plan.effects]
+
+
+def test_text_cards_do_not_overlap():
+    """AI character card + automatic name bar for the same person must not stack (bug seen with '도연')."""
+    from director.plan.compiler import declutter_text
+    from director.plan.schema import Effect
+
+    ai_card = Effect(id="character_card", category="text", start=10.0, end=12.5, params={"text": "도연", "subtitle": "남편"})
+    auto_bar = Effect(id="lower_third", category="text", start=10.2, end=12.8, params={"text": "도연"}, reason="auto")
+    later_same = Effect(id="lower_third", category="text", start=20.0, end=22.0, params={"text": "도연"}, reason="auto")
+    other_slot = Effect(id="title_slam", category="text", start=10.5, end=12.0, params={"text": "충격"})
+    shake = Effect(id="shake", category="camera", start=10.0, end=11.0)
+    kept = declutter_text([auto_bar, ai_card, later_same, other_slot, shake])
+    ids = [(e.id, e.start) for e in kept]
+    assert ("character_card", 10.0) in ids and ("lower_third", 10.2) not in ids
+    assert ("lower_third", 20.0) not in ids  # same name again within 30 s
+    assert ("title_slam", 10.5) in ids and ("shake", 10.0) in ids

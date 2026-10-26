@@ -15,6 +15,8 @@ Editing principles:
 - Respect the requested frame(s), duration, number of parts and style. Captions keep the language spoken in the video, with correct diacritics/characters.
 - ALL text you ADD on screen (title, params.text of text effects) must be in the ON-SCREEN TEXT LANGUAGE given in
   the request, never in another language. Never add a big emphasis word in the middle of the frame unless asked.
+- Introduce each character at most once (one character_card OR lower_third, not both), and never show two text
+  cards at the same time in the same area of the screen.
 - Prefer effects whose 'hợp' (fits) moods match the line's emotion.
 """
 

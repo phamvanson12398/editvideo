@@ -392,6 +392,41 @@ def music_file(mood: str, assets: Path) -> Path | None:
     return sorted(files)[0] if files else None
 
 
+# Text effects that occupy the same place on screen: only one at a time per slot.
+TEXT_SLOTS = {
+    "left": {"lower_third", "character_card", "freeze_intro"},
+    "top": {"title_slam", "title_reveal", "title_split", "question_hook", "warning_label"},
+    "center": {"chapter_card", "time_skip", "continue_card", "end_screen", "countdown", "relationship_map", "kinetic_type", "fake_chat"},
+    "bottom": {"cta"},
+}
+_SLOT_OF = {eid: slot for slot, ids in TEXT_SLOTS.items() for eid in ids}
+
+
+def declutter_text(effects: list[Effect], gap: float = 0.15, same_text_window: float = 30.0) -> list[Effect]:
+    """Drop text cards that would overlap another card in the same screen slot, and repeated
+    introductions of the same name. Cards chosen by the planner/AI win over automatic ones."""
+    kept: list[Effect] = []
+    busy: dict[str, list[tuple[float, float]]] = {}
+    seen_text: dict[str, float] = {}
+    order = sorted(effects, key=lambda e: (e.reason == "auto", e.start))
+    for e in order:
+        slot = _SLOT_OF.get(e.id) if e.category in ("text", "time") or e.id == "freeze_intro" else None
+        if slot is None:
+            kept.append(e)
+            continue
+        if any(e.start < b + gap and a < e.end + gap for a, b in busy.get(slot, [])):
+            continue
+        txt = str(e.params.get("text") or "").strip().lower()
+        if slot == "left" and txt:
+            last = seen_text.get(txt)
+            if last is not None and abs(e.start - last) < same_text_window:
+                continue
+            seen_text[txt] = e.start
+        busy.setdefault(slot, []).append((e.start, e.end))
+        kept.append(e)
+    return sorted(kept, key=lambda e: e.start)
+
+
 def _pct_db(pct: float) -> float:
     """Volume percent -> dB (100% = 0 dB, 50% = -6 dB)."""
     import math
@@ -571,7 +606,10 @@ def compile_plan(
             if who and who not in seen and chars.get(who, {}).get("name") and chars[who]["name"] not in default_names:
                 seen.add(who)
                 out_effects.append(Effect(id="lower_third", category="text", start=cl.start + 0.2, end=min(total, cl.start + 2.8),
-                                          params={"text": chars[who]["name"], "subtitle": "", "color": chars[who]["color"]}, clip=cl.id))
+                                          params={"text": chars[who]["name"], "subtitle": "", "color": chars[who]["color"]}, clip=cl.id,
+                                          reason="auto"))
+
+    out_effects = declutter_text(out_effects)
 
     # added on-screen text follows the chosen language (defaults from the catalog get translated)
     for e in out_effects:
