@@ -1,6 +1,6 @@
 # Director — Tool edit video bằng AI
 
-> Đầu vào: video gốc + mô tả phong cách (bằng lời, hoặc một video mẫu "edit giống thế này").
+> Đầu vào: **một file video** (có sẵn phụ đề hoặc không), kèm lệnh/mô tả phong cách nếu muốn. Mọi thứ còn lại tool tự lo.
 > Đầu ra: video thành phẩm, kèm vài phiên bản và file timeline để chỉnh tay.
 
 ---
@@ -296,21 +296,38 @@ Kèm theo là các **kiểm tra tự động không cần AI**: phụ đề vư�
 
 Video của bạn đa thể loại nhưng chủ yếu là **hoạt hình kiểu drama do chính bạn sản xuất**. Nhiệm vụ của tool là **làm video gốc hay hơn**, không xoá, che hay thay đổi nội dung bạn đã làm, chỉ thêm vào (phụ đề, hiệu ứng, tiếng động, nhạc, nhịp dựng). Hoạt hình khác video người thật ở nhiều điểm, nên Director có **hồ sơ thể loại** (genre profile): mỗi thể loại một bộ công cụ phân tích, một bộ hiệu ứng ưu tiên và một Style DNA mặc định.
 
-### 4.0 Lợi thế khi là người sản xuất: tài liệu gốc
+### 4.0 Đầu vào: chỉ một file video, tool tự lo hết
 
-Vì video do bạn làm, bạn có thể đưa thêm tài liệu sản xuất (đều tuỳ chọn). Có càng nhiều thì tool càng ít phải đoán và kết quả càng chính xác:
+Bạn chỉ đưa vào **một file video**. Không cần kịch bản, danh sách nhân vật hay âm thanh tách riêng. Lệnh/mô tả phong cách cũng là tuỳ chọn: không ghi gì thì tool tự chọn phong cách theo thể loại.
 
-| Tài liệu | Tool dùng để | Nếu không có |
-|---|---|---|
-| **Kịch bản / lời thoại** (txt, docx, srt) | Phụ đề đúng 100%, biết ai nói câu nào, biết ý đồ từng cảnh | Whisper chép lời + đoán người nói |
-| **Danh sách nhân vật** (tên, ảnh nhân vật) | Nhận diện nhân vật ngay từ đầu, màu phụ đề theo nhân vật | Tự gom nhóm, bạn đặt tên sau |
-| **Âm thanh tách riêng** (thoại, nhạc nền, tiếng động) | Mix lại chuẩn: chỉnh to nhỏ từng lớp, đổi nhạc theo cảm xúc | Demucs tự tách (kém sạch hơn) |
-| **Video không chữ** (bản trước khi chèn chữ) | Tự do đặt phụ đề và hiệu ứng | Né vùng chữ có sẵn |
-| **Video có độ phân giải gốc cao** | Reframe sang khung dọc vẫn nét | Nâng nét bằng Real-ESRGAN anime khi cần |
+```
+director edit tap12.mp4                                   # tool tự quyết hết
+director edit tap12.mp4 --style "dọc 9:16, hook bằng cú twist, 60 giây"
+```
 
-Lệnh ví dụ: `director edit tap12.mp4 --script tap12.srt --characters nhanvat/ --style "drama dọc 9:16, hook bằng cú twist"`
+Những gì tool tự làm thay cho tài liệu sản xuất:
 
-Tool cũng **ghi nhớ theo bộ phim**: nhân vật, màu phụ đề, phong cách đã chọn được lưu lại, tập sau chỉ cần đưa video vào là dựng đồng bộ với các tập trước.
+| Thông tin cần | Tool tự lấy bằng cách |
+|---|---|
+| Lời thoại | Video có sẵn phụ đề: **đọc phụ đề trên hình** (OCR), dùng Whisper để căn thời gian. Không có phụ đề: Whisper chép lời từ phần thoại đã tách khỏi nhạc |
+| Ai nói câu nào | Tách giọng theo người nói (pyannote) + nhân vật đang xuất hiện trên hình |
+| Tên nhân vật | Gom nhóm nhân vật theo hình, rồi LLM đoán tên từ lời thoại (khi nhân vật được gọi tên). Không đoán được thì đặt "Nhân vật 1, 2..." |
+| Thoại / nhạc / tiếng động | Demucs tự tách |
+| Cấu trúc câu chuyện | LLM đọc lời thoại + xem keyframe |
+
+**Tự ghi nhớ theo bộ phim:** tool so nhân vật giữa các video. Khi nhận ra cùng bộ phim, nó tự dùng lại tên nhân vật, màu phụ đề và phong cách của các tập trước, nên các tập ra đồng bộ mà bạn không phải làm gì.
+
+### 4.0b Video có sẵn phụ đề hay không
+
+Bước đầu, tool quét để biết video **có phụ đề cứng sẵn trên hình không** và nằm ở vùng nào. Tool **không xoá, không che** phụ đề gốc.
+
+| Tình huống | Tool xử lý |
+|---|---|
+| **Không có phụ đề** | Chép lời, tự thêm phụ đề theo phong cách (màu theo nhân vật, đổi kiểu theo cảm xúc) |
+| **Có phụ đề, giữ nguyên khung** | Giữ phụ đề gốc, **không thêm phụ đề thoại trùng lặp**. Chữ nhấn, tiêu đề, sticker được đặt né vùng phụ đề |
+| **Có phụ đề, đổi khung** (ví dụ 16:9 sang 9:16) | Cắt khung dọc sẽ làm mất hai đầu phụ đề, nên tool tự chọn bố cục **giữ trọn khung gốc** (`fit-blur`: nền mờ phía sau, hoặc khung gốc ở giữa với tiêu đề/chữ nhấn ở khoảng trống trên dưới). Cảnh nào không có thoại thì vẫn được cắt cận hoặc zoom vào nhân vật cho sinh động |
+
+Muốn khác đi thì ra lệnh, ví dụ "thêm phụ đề to kiểu TikTok dù đã có sub".
 
 ### 4.1 Tự nhận thể loại
 
@@ -324,7 +341,7 @@ Bước đầu tiên của Perception: lấy khoảng 20 keyframe, phân loại 
 | **Biết ai là ai** | Nhận diện khuôn mặt người không dùng được | Cắt ảnh nhân vật → SigLIP embedding → gom cụm thành "nhân vật A, B, C". Bạn đặt tên một lần, tool nhớ cho cả bộ phim |
 | **Ai đang nói** | Hoạt hình không có khẩu hình rõ ràng | pyannote tách giọng theo người nói, rồi ghép giọng với nhân vật hay xuất hiện trên hình cùng lúc. Bạn sửa được nếu sai |
 | **Lời thoại lẫn nhạc** | Whisper nghe sai khi nhạc nền to và nhiều tiếng động | **Demucs tách thoại ra trước**, sau đó mới chạy Whisper. Nhạc nền gốc được giữ riêng để mix lại |
-| **Chữ có sẵn trên hình** (tên nhân vật, chữ minh hoạ bạn đã làm) | Phụ đề và hiệu ứng mới đè lên, rất rối | PaddleOCR tìm vùng chữ có sẵn để **né**, không đặt phụ đề/sticker đè lên và không cắt khung làm mất chữ. Tool không xoá hay che gì trên video gốc |
+| **Chữ có sẵn trên hình** (phụ đề, tên nhân vật, chữ minh hoạ) | Phụ đề và hiệu ứng mới đè lên, rất rối | PaddleOCR tìm vùng chữ có sẵn để **né**, không đặt phụ đề/sticker đè lên và không cắt khung làm mất chữ. Tool không xoá hay che gì trên video gốc |
 | **Hoạt hình giữ khung** (một hình lặp nhiều frame) | Dò chuyển cảnh báo sai; RIFE tạo hình méo khi nội suy | Chỉnh ngưỡng dò cảnh cho hoạt hình, nhận biết frame lặp bằng perceptual hash. **Tắt RIFE mặc định**; làm chậm bằng giữ hình / zoom chậm thay vì nội suy |
 | **Cảm xúc** | Model cảm xúc khuôn mặt người không chạy trên hình vẽ | Kết hợp giọng nói (cao độ, âm lượng, khóc/hét), cảm xúc nhạc nền gốc, nội dung lời thoại và VLM mô tả cảnh |
 | **Nâng nét** | Model cho ảnh thật làm hình vẽ bị bết | Real-ESRGAN bản **realesr-animevideov3**: nhẹ, nhanh, giữ nét vẽ |
@@ -388,7 +405,8 @@ Phụ đề drama có màu theo nhân vật (mỗi nhân vật một màu, giữ
   "transitions": { "default": "hard-cut", "accent": ["flash-white", "fade-black"] },
   "color":       { "per_emotion": { "sad": "desaturate", "anger": "red-tint", "villain": "dark" } },
   "audio":       { "keep_original_bgm": true, "bgm_by_emotion": true, "sfx_pack": "drama" },
-  "existing_text": "avoid"        // né chữ có sẵn trên hình, không xoá
+  "existing_text": "avoid",       // né chữ có sẵn trên hình, không xoá
+  "captions_if_hardsub": "emphasis-only"  // có sẵn sub: chỉ thêm chữ nhấn, không lặp phụ đề thoại
 }
 ```
 
@@ -412,7 +430,7 @@ GTX 1080 dùng kiến trúc Pascal (compute 6.1). Những điều cần biết:
 | Nhận diện nhân vật | SigLIP embedding + gom cụm | Local | Nhẹ |
 | Tách thoại khỏi nhạc nền | Demucs | Local | Chạy trước Whisper cho hoạt hình |
 | Ai đang nói | pyannote (diarization) | Local | Khoảng 2–3 GB |
-| Tìm chữ có sẵn trên hình (để né) | PaddleOCR | Local | Nhẹ |
+| Đọc phụ đề có sẵn / tìm chữ để né | PaddleOCR | Local | Nhẹ |
 | Embedding hình | SigLIP base | Local | Nhẹ |
 | Chuyển cảnh | TransNetV2 | Local | Nhẹ |
 | Tách nền người | RobustVideoMatting | Local | Chạy tốt ở 1080p |
@@ -465,7 +483,7 @@ editvideo/
 | Mốc | Nội dung | Xong khi |
 |---|---|---|
 | **M1: Nền móng** | Schema Edit Plan, CLI, Perception cơ bản (whisper, silence, scene), render ffmpeg + Remotion phụ đề, ghép lớp | `director edit in.mp4 --style "cắt im lặng, phụ đề to"` ra MP4 đúng |
-| **M2: Hoạt hình drama** | Hồ sơ thể loại hoạt hình drama (mục 4): tách thoại khỏi nhạc, dò mặt và nhận diện nhân vật hoạt hình, né chữ có sẵn, bộ hiệu ứng drama. Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo nhân vật, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Một tập hoạt hình drama ra được short có hook, phụ đề, hiệu ứng và tiếng động, đăng được |
+| **M2: Hoạt hình drama** | Hồ sơ thể loại hoạt hình drama (mục 4): tách thoại khỏi nhạc, dò mặt và nhận diện nhân vật hoạt hình, nhận biết và đọc phụ đề có sẵn, bố cục giữ phụ đề khi đổi khung, bộ hiệu ứng drama. Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo nhân vật, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Một tập hoạt hình drama ra được short có hook, phụ đề, hiệu ứng và tiếng động, đăng được |
 | **M3: Bộ não** | Director Agent dùng tool, Style DNA từ câu chữ, Effect Registry | Mô tả tự do → kế hoạch dựng hợp lý |
 | **M4: Tự sửa** | Bản nháp nhanh, Critic Loop, render theo cache | Điểm Critic tăng sau mỗi vòng |
 | **M5: Studio** | Web UI, sửa bằng chat, nhiều phương án, xuất OTIO | Dùng hằng ngày không cần dòng lệnh |
