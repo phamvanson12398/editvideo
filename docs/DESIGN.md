@@ -253,6 +253,8 @@ Ba loại hiệu ứng:
 
 Thêm hiệu ứng mới chỉ cần thêm plugin, không phải sửa agent.
 
+**Danh mục đầy đủ** (gần 200 mục: hiệu ứng hình, phụ đề, chữ, manga, màu, bố cục, âm thanh, kèm combo theo cảm xúc và quy tắc dùng): xem [EFFECTS.md](EFFECTS.md).
+
 ### ⑥ Render Engine
 
 ```
