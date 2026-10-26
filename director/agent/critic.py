@@ -94,6 +94,7 @@ def critique_loop(plan: EditPlan, idx: VideoIndex, style: StyleDNA, job: Path, n
             content.append(image_block(p, 640))
         content.append({"type": "text", "text": f"""You are reviewing a DRAFT render of your own edit ({plan.outputs[0].width}x{plan.outputs[0].height}).
 Style requested: {style.description or style.name}
+On-screen text language (added titles/cards): {plan.text_language}; flag any added text in another language.
 Plan summary:
 {summarize(plan)}
 Timeline: {json.dumps([{'id': c.id, 'out': [round(c.start, 2), round(c.start + c.duration, 2)], 'src': [c.src_in, c.src_out], 'role': c.role} for c in plan.clips])}

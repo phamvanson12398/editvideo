@@ -40,7 +40,8 @@ const load = (family: string) => {
 export const useFontFamily = (name: string): string => {
   const family = FAMILIES[name] ? name : 'Be Vietnam Pro';
   load(family);
-  return `'D-${family}', 'Be Vietnam Pro', 'Noto Sans', 'DejaVu Sans', Arial, sans-serif`;
+  // Korean / Japanese / Chinese fall back to the system's CJK fonts
+  return `'D-${family}', 'Be Vietnam Pro', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans CJK KR', 'Noto Sans KR', 'Yu Gothic', 'Microsoft YaHei', 'Noto Sans', 'DejaVu Sans', Arial, sans-serif`;
 };
 
 export const TITLE_FONT = 'Be Vietnam Pro';

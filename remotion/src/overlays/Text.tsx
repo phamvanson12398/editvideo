@@ -86,7 +86,7 @@ const Card: React.FC<{e: Effect; c: Ctx}> = ({e, c}) => {
         <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: env, background: isSkip ? 'transparent' : 'rgba(0,0,0,.55)'}}>
           <div style={{fontFamily: font, fontWeight: isSkip ? 700 : 900, fontStyle: isSkip ? 'italic' : 'normal', fontSize: u * (isSkip ? 0.075 : 0.1), color: '#fff',
             letterSpacing: `${0.02 + slide * 0.2}em`, padding: `${u * 0.02}px ${u * 0.05}px`, background: isSkip ? 'rgba(0,0,0,.55)' : 'transparent', borderRadius: u * 0.02, ...stroke(u * 0.004)}}>
-            {P.text || (isSkip ? 'Một lúc sau...' : '')}
+            {P.text || ''}
           </div>
         </AbsoluteFill>
       );
@@ -115,7 +115,7 @@ const Card: React.FC<{e: Effect; c: Ctx}> = ({e, c}) => {
         <div style={{position: 'absolute', left: 0, right: 0, top: H * 0.16, display: 'flex', justifyContent: 'center', opacity: env}}>
           <div style={{fontFamily: font, fontWeight: 900, fontSize: u * 0.07, color: '#fff', background: '#d70015', padding: `${u * 0.015}px ${u * 0.04}px`, border: `${u * 0.008}px solid #fff`,
             transform: `scale(${1 + 0.05 * Math.sin(local * 12)}) rotate(-4deg)`, boxShadow: '0 0 40px rgba(255,0,0,.6)', letterSpacing: '0.08em'}}>
-            ⚠ {P.text || 'PHẢN DIỆN'}
+            ⚠ {P.text || ''}
           </div>
         </div>
       );
@@ -127,7 +127,7 @@ const Card: React.FC<{e: Effect; c: Ctx}> = ({e, c}) => {
           <div style={{position: 'absolute', left: 0, right: 0, bottom: H * (c.safe.bottom + 0.06), display: 'flex', justifyContent: 'center', opacity: env}}>
             <div style={{display: 'flex', alignItems: 'center', gap: u * 0.025, background: '#ff0033', color: '#fff', fontFamily: font, fontWeight: 800, fontSize: u * 0.055,
               padding: `${u * 0.022}px ${u * 0.045}px`, borderRadius: u * 0.06, transform: `scale(${0.8 + 0.2 * backOut(clamp(local / 0.35))})`, boxShadow: '0 10px 30px rgba(0,0,0,.4)'}}>
-              <span>🔔</span> {P.text || 'Theo dõi để xem tiếp!'}
+              <span>🔔</span> {P.text || ''}
             </div>
           </div>
         );
@@ -135,7 +135,7 @@ const Card: React.FC<{e: Effect; c: Ctx}> = ({e, c}) => {
       return (
         <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', background: `rgba(0,0,0,${0.55 * env})`}}>
           <div style={{fontFamily: font, fontWeight: 900, fontStyle: 'italic', fontSize: u * 0.11, color: '#fff', opacity: env, transform: `translateY(${slide * u * 0.1}px)`, ...stroke(u * 0.006)}}>
-            {P.text || 'Còn tiếp...'}
+            {P.text || ''}
           </div>
         </AbsoluteFill>
       );
@@ -176,7 +176,7 @@ const Anchored: React.FC<{e: Effect; c: Ctx}> = ({e, c}) => {
       return (
         <div style={{position: 'absolute', left: clamp(ax + fs * 0.6, fs, W - fs * 2), top: clamp(ay - fs * 1.4, H * 0.08, H * 0.8), opacity: env,
           transform: `scale(${s}) rotate(-10deg)`, fontFamily: font, fontWeight: 900, fontSize: fs, color: '#FFD400', ...stroke(fs * 0.08, '#d70015')}}>
-          {P.text || 'RẦM!'}
+          {P.text || ''}
         </div>
       );
     }

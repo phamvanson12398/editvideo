@@ -33,6 +33,11 @@ def cmd_edit(a: argparse.Namespace) -> int:
         if a.command is None:
             print("Mô tả phong cách (bỏ trống = tool tự quyết). Ví dụ: drama dọc 9:16, hook bằng cú twist, 60 giây")
             a.command = _ask("> ")
+        if a.text_lang is None:
+            print("Ngôn ngữ chữ chèn thêm (tiêu đề, 'còn tiếp'...): Enter = theo tiếng trong video | vi | ko | en | ja | zh")
+            a.text_lang = _ask("> ") or None
+        if not a.fast:
+            a.fast = _ask("Dựng nhanh ở 720p? (c = có, Enter = không, giữ 1080p): ").lower() in ("c", "co", "có", "y", "yes")
     if not a.video:
         print("Chưa có video.", file=sys.stderr)
         return 1
@@ -41,7 +46,7 @@ def cmd_edit(a: argparse.Namespace) -> int:
         use_llm=False if a.no_llm else (True if a.llm else None), critic_rounds=a.critic, variants=a.variants,
         genre=a.genre, whisper_model=a.whisper_model, language=a.lang, separate=not a.no_separate,
         force_analyze=a.reanalyze, export_timeline=not a.no_export, remember=not a.no_memory, upscale=a.upscale,
-        reference=Path(a.ref) if a.ref else None,
+        reference=Path(a.ref) if a.ref else None, text_language=a.text_lang, fast=a.fast,
     )
     res = run_job(a.video, opt)
     print("\n" + res.summary)
@@ -214,7 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--draft", action="store_true", help="Chỉ dựng bản nháp nhanh (độ phân giải thấp)")
     e.add_argument("--llm", action="store_true", help="Bắt buộc dùng AI (Antigravity)")
     e.add_argument("--no-llm", action="store_true", help="Không dùng AI (planner offline)")
-    e.add_argument("--critic", type=int, default=2, help="Số vòng tự xem lại & sửa (cần AI)")
+    e.add_argument("--critic", type=int, default=None, help="Số vòng tự xem lại & sửa (cần AI). Mặc định: 1 vòng nếu video ≤ 3 phút")
+    e.add_argument("--nhanh", "--fast", dest="fast", action="store_true", help="Xuất 720p: dựng nhanh gần gấp đôi")
     e.add_argument("--variants", type=int, default=1, choices=[1, 2, 3], help="Số phương án (chuẩn / mạnh tay / an toàn)")
     e.add_argument("--genre", choices=["anime", "cartoon3d", "live", "gameplay"], help="Ghi đè thể loại tự nhận")
     e.add_argument("--whisper-model", help="large-v3-turbo | medium | small ...")
@@ -224,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--no-export", action="store_true", help="Không xuất EDL/OTIO")
     e.add_argument("--no-memory", action="store_true", help="Không dùng/ghi bộ nhớ bộ phim & sở thích")
     e.add_argument("--ref", help="Video mẫu: dựng theo phong cách của video này")
+    e.add_argument("--text-lang", help="Ngôn ngữ chữ tool chèn thêm (tiêu đề, thẻ...): auto | vi | ko | en | ja | zh. Mặc định auto = theo tiếng trong video")
     e.add_argument("--upscale", action="store_true", help="Nâng nét x2 bằng Real-ESRGAN anime (cần realesrgan-ncnn-vulkan, GPU)")
     e.set_defaults(fn=cmd_edit)
 

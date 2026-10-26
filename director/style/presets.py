@@ -15,7 +15,7 @@ _PRESETS: dict[str, dict] = {
         "pacing": {"avg_shot_sec": 2.2, "remove_silence_over": 0.5, "slow_down_on": ["sad"], "cut_on_beat": False},
         "hook": {"enabled": True, "max_sec": 3.0, "strategy": "twist-first-then-rewind"},
         "captions": {"preset": "color_by_character", "color_by_character": True, "emotion_styles": True,
-                     "words_per_line": 5, "weight": 800, "if_hardsub": "emphasis-only"},
+                     "words_per_line": 5, "weight": 800, "if_hardsub": "none"},
         "camera": {"reframe": "auto", "punch_in_on": ["shock", "anger"], "shake_on": ["shock", "anger"]},
         "transitions": {"default": "cut", "accent": ["flash_white", "fade_black", "glitch_cut"], "frequency": "low"},
         "color": {"lut": "anime_vivid", "intensity": 0.5,

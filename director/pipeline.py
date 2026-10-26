@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -32,7 +34,8 @@ class JobOptions:
     out_dir: Path = Path("outputs")
     draft: bool = False
     use_llm: bool | None = None  # None = auto (when an API key is configured)
-    critic_rounds: int = 2
+    critic_rounds: int | None = None  # None = auto: 1 round for outputs up to 3 minutes, 0 for longer
+    fast: bool = False  # 720p output: roughly twice as fast to render
     variants: int = 1
     genre: str | None = None
     whisper_model: str | None = None
@@ -43,6 +46,7 @@ class JobOptions:
     remember: bool = True
     upscale: bool = False
     reference: Path | None = None  # "edit like this video"
+    text_language: str | None = None  # added on-screen text: vi | ko | en | ja | zh ... (None = spoken language)
 
 
 @dataclass
@@ -92,6 +96,8 @@ def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
             warn(f"LLM đọc lệnh phong cách lỗi, dùng kết quả offline: {e}")
     if opt.frames:
         style.frames = opt.frames
+    if opt.text_language and opt.text_language != "auto":
+        style.text_language = opt.text_language
     if opt.remember:
         from .memory.store import apply_series_memory
 
@@ -148,6 +154,7 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     job.mkdir(parents=True, exist_ok=True)
     res = JobResult(job_dir=job)
 
+    t_start = time.time()
     idx = analyze(video, job, genre_hint=opt.genre, whisper_model=opt.whisper_model, language=opt.language,
                   separate=opt.separate, force=opt.force_analyze)
     use_llm = llm_enabled(opt)
@@ -161,6 +168,11 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     style = resolve_style(idx, opt, use_llm)
     (job / "style.json").write_text(style.model_dump_json(indent=2), encoding="utf-8")
     outputs = parse_frames(style.frames, idx.source.width, idx.source.height)
+    if opt.fast:
+        for o in outputs:
+            k = min(1.0, 1280 / max(o.width, o.height))
+            o.width, o.height = int(o.width * k) // 2 * 2, int(o.height * k) // 2 * 2
+    log(f"[{time.time() - t_start:.0f}s] Phân tích xong.")
     log(f"Phong cách: {style.name} | khung: {', '.join(o.id for o in outputs)} | AI: {provider_label() if use_llm else 'tắt (offline)'}")
 
     variants = make_drafts(idx, style, opt, use_llm)
@@ -173,11 +185,16 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
             if len(parts) > 1:
                 name += f"_phan{pi + 1}"
             plan = compile_plan(draft, idx, style, outputs)
-            if use_llm and opt.critic_rounds > 0 and not opt.draft:
+            rounds = opt.critic_rounds
+            if rounds is None:
+                rounds = 1 if plan.duration <= float(os.environ.get("DIRECTOR_CRITIC_MAX_SEC", "180")) else 0
+                if use_llm and rounds == 0:
+                    log("Video dài: bỏ qua vòng tự xem lại để tiết kiệm thời gian (bật bằng --critic 1).")
+            if use_llm and rounds > 0 and not opt.draft:
                 try:
                     from .agent.critic import critique_loop
 
-                    plan = critique_loop(plan, idx, style, job, name, rounds=opt.critic_rounds,
+                    plan = critique_loop(plan, idx, style, job, name, rounds=rounds,
                                          render_draft=lambda p: render_plan(p, job, f"{name}_critic", job / "drafts", draft=True,
                                                                             has_audio=idx.source.has_audio))
                 except Exception as e:
@@ -186,8 +203,10 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
             plan_path.write_text(plan.model_dump_json(indent=1), encoding="utf-8")
             res.plans.append(plan_path)
             summaries.append(f"== {name} ==\n{summarize(plan)}")
+            t_render = time.time()
             res.outputs += render_plan(plan, job, name, out_dir, draft=opt.draft, has_audio=idx.source.has_audio,
                                        upscale=opt.upscale)
+            log(f"Dựng '{name}' mất {time.time() - t_render:.0f}s (video dài {plan.duration:.0f}s).")
             if opt.export_timeline:
                 from .export.timeline import export_edl, export_otio
 

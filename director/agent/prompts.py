@@ -12,7 +12,9 @@ Editing principles:
   keep the strongest combo for the twist; leave breathing room after strong moments; never repeat the same effect back-to-back.
 - Cut silences, filler words and retakes (keep the LAST take), but keep action beats (impacts, reactions, music hits).
 - Cuts land at word boundaries; never cut in the middle of a word. Keep 0.08-0.15 s padding around speech.
-- Respect the requested frame(s), duration, number of parts and style. Vietnamese captions must keep diacritics.
+- Respect the requested frame(s), duration, number of parts and style. Captions keep the language spoken in the video, with correct diacritics/characters.
+- ALL text you ADD on screen (title, params.text of text effects) must be in the ON-SCREEN TEXT LANGUAGE given in
+  the request, never in another language. Never add a big emphasis word in the middle of the frame unless asked.
 - Prefer effects whose 'hợp' (fits) moods match the line's emotion.
 """
 
@@ -26,7 +28,7 @@ PLAN_SCHEMA = """PlanDraft JSON schema (all times in SOURCE seconds unless state
   "sfx": [ {"id": "<sfx id>", "clip": <index>, "at": <source time>, "gain_db": 0} ],
   "music": [ {"mood": "sad|happy|tense|epic|romance|comedy", "from_clip": 0, "to_clip": -1, "gain_db": -8} ],
   "captions": {"enabled": true, "preset": "<caption preset>", "mode": "full|emphasis-only|none"},
-  "title": null | "short hook title (Vietnamese)",
+  "title": null | "short hook title (in the on-screen text language)",
   "lut": null | "warm|cool|teal_orange|pop|moody|pastel|vintage|sepia|bw|cinematic|anime_vivid|night",
   "lut_intensity": 0.6,
   "character_names": {"C0": "Tên"},
@@ -34,7 +36,7 @@ PLAN_SCHEMA = """PlanDraft JSON schema (all times in SOURCE seconds unless state
 }
 Rules: clips play in list order (a hook clip may repeat a later moment). src_in < src_out, within the video.
 Time effects (speed, slow_hold, freeze_frame, replay, stutter, rewind, boomerang, speed_ramp) are effects too.
-Text effects take params.text (Vietnamese). Combo ids expand into several effects + sound effects automatically.
+Text effects take params.text (in the on-screen text language). Combo ids expand into several effects + sound effects automatically.
 SFX ids: whoosh_fast, whoosh_heavy, whoosh_slow, swoosh, swish, riser, downer, reverse_cymbal, impact_boom, impact_punch,
 hit_flash, slap, glass_break, door_slam, thunder, dun_dun_dun, heartbeat, heartbeat_fast, tick, clock_tick, wind,
 record_scratch, boing, crow, crickets, trombone_sad, pop, ding, click, ting, notification, typing, camera_shutter,

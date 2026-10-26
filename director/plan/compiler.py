@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .. import i18n
 from ..effects.catalog import COMBOS, EFFECTS
 from ..perception.schema import VideoIndex
 from ..render.sfx_synth import sfx_file
@@ -407,7 +409,8 @@ def compile_plan(
 ) -> EditPlan:
     cache = cache or (assets / "cache")
     D = idx.source.duration
-    chars = {c.id: {"name": draft.character_names.get(c.id) or c.name or f"Nhân vật {i + 1}", "color": c.color}
+    lang = i18n.resolve(style.text_language, idx.language)
+    chars = {c.id: {"name": draft.character_names.get(c.id) or c.name or i18n.t("character", lang, n=i + 1), "color": c.color}
              for i, c in enumerate(idx.characters)}
 
     # sanitize clips
@@ -546,19 +549,31 @@ def compile_plan(
     if ex.progress_bar:
         out_effects.append(Effect(id="progress_bar", category="layout", start=0, end=total, params={"color": style.captions.highlight}))
     if ex.episode_badge:
-        out_effects.append(Effect(id="episode_badge", category="layout", start=0, end=total, params={"text": ex.episode_badge}))
+        m_ep = re.fullmatch(r"Tập\s*(\d+)", ex.episode_badge.strip())
+        badge = i18n.t("episode", lang, n=m_ep.group(1)) if m_ep else ex.episode_badge
+        out_effects.append(Effect(id="episode_badge", category="layout", start=0, end=total, params={"text": badge}))
     if ex.watermark:
         out_effects.append(Effect(id="watermark", category="layout", start=0, end=total, params={"text": ex.watermark}))
+    default_names = {i18n.t("character", lang, n=i + 1) for i in range(len(idx.characters))}
     if ex.character_cards and chars:
         seen: set[str] = set()
         for cl, wc in zip(clips, wclips):
             if wc.role != "main":
                 continue
             who = speaking_character(idx, wc)
-            if who and who not in seen and chars.get(who, {}).get("name") and not chars[who]["name"].startswith("Nhân vật"):
+            if who and who not in seen and chars.get(who, {}).get("name") and chars[who]["name"] not in default_names:
                 seen.add(who)
                 out_effects.append(Effect(id="lower_third", category="text", start=cl.start + 0.2, end=min(total, cl.start + 2.8),
                                           params={"text": chars[who]["name"], "subtitle": "", "color": chars[who]["color"]}, clip=cl.id))
+
+    # added on-screen text follows the chosen language (defaults from the catalog get translated)
+    for e in out_effects:
+        if e.category != "text":
+            continue
+        txt = e.params.get("text")
+        key = i18n.DEFAULT_TEXT_KEYS.get(txt or "") if txt else i18n.EFFECT_TEXT_KEY.get(e.id)
+        if key:
+            e.params["text"] = i18n.t(key, lang)
 
     out_effects.sort(key=lambda e: e.start)
 
@@ -644,6 +659,7 @@ def compile_plan(
         hardsub={"x": hs.x, "y": hs.y, "w": hs.w, "h": hs.h} if hs.present else None,
         characters=chars,
         genre=idx.genre,
+        text_language=lang,
         style_name=style.name,
         notes=draft.notes,
         draft=draft,

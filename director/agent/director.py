@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .. import i18n
 from ..effects.catalog import COMBOS, EFFECTS, catalog_for_llm
 from ..memory.store import preference_notes
 from ..perception.schema import StoryBeat, VideoIndex
@@ -195,11 +196,12 @@ STYLE (must follow):
 USER COMMAND: {command!r}
 {('VARIANT: make this the "' + variant + '" version (chuẩn = balanced, mạnh tay = bold/many effects, an toàn = restrained).') if variant else ''}
 USER TASTE (recent requests, newest first): {prefs or 'none'}
+ON-SCREEN TEXT LANGUAGE: {i18n.name(i18n.resolve(style.text_language, idx.language))} ({i18n.resolve(style.text_language, idx.language)}). Spoken language: {idx.language}.
 TARGET DURATION: {style.target_duration or 'as needed'} s; PARTS: {style.parts}; HOOK: {style.hook.strategy}.
 CAPTIONS: burned-in subtitles present = {idx.hardsub.present} -> follow captions.if_hardsub = {style.captions.if_hardsub}.
 
 An automatic baseline plan (valid, rule-based) is below. Improve it like a top editor: better hook, smarter cuts at
-word boundaries (use word timings), effects/sfx placed exactly on the right words/beats, music and titles in Vietnamese.
+word boundaries (use word timings), effects/sfx placed exactly on the right words/beats, music, titles in the on-screen text language.
 Baseline: {json.dumps({'parts': [b.model_dump() for b in baseline]}, ensure_ascii=False)}
 
 Return JSON: {{"parts": [PlanDraft, ...]}} with exactly {style.parts} part(s)."""},
@@ -263,6 +265,7 @@ CURRENT DRAFT: {plan.draft.model_dump_json() if plan.draft else 'null'}
 CURRENT OUTPUT TIMELINE (what the user watched; times the user mentions refer to OUTPUT time):
 {timeline}
 
+ON-SCREEN TEXT LANGUAGE: {i18n.resolve(style.text_language, idx.language)}
 USER REQUEST: {instruction!r}
 
 Change ONLY what the request needs; keep everything else identical. Return JSON:

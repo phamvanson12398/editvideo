@@ -121,7 +121,9 @@ Hãy tự kiểm tra điều khoản sử dụng của Google cho việc gọi `
 | `--preset anime-drama` | Chọn preset (xem `director styles`) |
 | `--variants 3` | Xuất 3 phương án: chuẩn / mạnh tay / an toàn |
 | `--draft` | Bản nháp nhanh để xem trước |
-| `--critic 2` | Số vòng tự xem lại và sửa (cần AI) |
+| `--critic 1` | Số vòng tự xem lại và sửa (cần AI). Mặc định: 1 vòng nếu video ≤ 3 phút, video dài hơn thì bỏ qua cho nhanh |
+| `--text-lang ko` | Ngôn ngữ chữ tool chèn thêm (tiêu đề, "còn tiếp", nhãn...): `vi`, `ko`, `en`, `ja`, `zh`. Mặc định theo tiếng trong video (video tiếng Hàn → chữ tiếng Hàn) |
+| `--nhanh` | Xuất 720p, dựng nhanh gần gấp đôi |
 | `--genre anime` | Ghi đè thể loại nếu tool nhận sai |
 | `--upscale` | Nâng nét x2 bằng Real-ESRGAN |
 | `--no-llm` | Không dùng AI |
@@ -138,6 +140,14 @@ Kết quả nằm trong `outputs/`: `<tên>_<khung>.mp4`, `<tên>.edl`, `<tên>.
 - `thêm phụ đề to kiểu TikTok dù đã có sub` → vẫn thêm phụ đề khi video có sub sẵn
 - `khung instagram và vuông` → xuất 4:5 và 1:1
 - `nhạc buồn, giữ nguyên nhạc gốc` → chọn nhạc trong `assets/music/sad/`
+
+### Tốc độ
+
+- Video **đã có sub sẵn** thì mặc định tool **không thêm phụ đề** nữa (kể cả chữ nhấn to ở giữa màn hình). Muốn thêm thì ghi trong lệnh: "thêm phụ đề dù đã có sub".
+- Tool chỉ đọc sub trên hình (OCR) khi không chép được lời; chỉ tách thoại/nhạc (Demucs) khi có GPU CUDA cho PyTorch (`5_CAI_THEM_GPU.bat`).
+- Whisper chạy theo lô trên GPU (nhanh hơn nhiều lần). Remotion dùng hết số nhân CPU (đổi bằng biến `DIRECTOR_CONCURRENCY`).
+- `--nhanh` (hoặc tích "Dựng nhanh 720p" trong Studio) xuất 720p.
+- Log in ra thời gian từng bước ("Phân tích xong", "Dựng ... mất ...s") để biết chậm ở đâu.
 
 ### Sửa bằng lời
 

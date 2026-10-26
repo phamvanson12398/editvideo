@@ -76,6 +76,10 @@ def analyze(
 
     # ---- speech
     asr_wav = workdir / "audio16k.wav" if src.has_audio else None
+    if src.has_audio and separate and not SP.separation_gpu_ok():
+        log("  Bỏ qua tách thoại/nhạc (Demucs) vì không có GPU CUDA cho PyTorch: chạy CPU rất chậm. "
+            "Cài 5_CAI_THEM_GPU.bat để bật, hoặc đặt DIRECTOR_DEMUCS_CPU=1 để vẫn chạy bằng CPU.")
+        separate = False
     if src.has_audio and separate:
         stereo = workdir / "audio44k.wav"
         if not stereo.exists():
@@ -85,7 +89,8 @@ def analyze(
             asr_wav = A.extract_wav(idx.stems["vocals"], workdir / "vocals16k.wav")
     if asr_wav:
         idx.sentences, idx.language = SP.transcribe(asr_wav, whisper_model, language)
-    if idx.hardsub.present:
+    if idx.hardsub.present and not idx.sentences:
+        # OCR is slow; only needed when speech recognition produced nothing
         lines = SP.ocr_subtitles(video, idx.hardsub, src.duration)
         idx.hardsub.lines = lines
         if lines and not idx.sentences:

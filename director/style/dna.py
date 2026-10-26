@@ -38,7 +38,7 @@ class Captions(BaseModel):
     emotion_styles: bool = False
     uppercase: bool = False
     emoji: bool = False
-    if_hardsub: str = "emphasis-only"  # emphasis-only | none | full
+    if_hardsub: str = "none"  # none | emphasis-only | full  (video already has subtitles)
 
 
 class Camera(BaseModel):
@@ -112,6 +112,7 @@ class StyleDNA(BaseModel):
     parts: int = 1  # split into N parts
     frames: Optional[list[str]] = None  # raw frame requests ("tiktok", "4:5", "1080x1350"...)
     existing_text: str = "avoid"
+    text_language: Optional[str] = None  # language of ADDED text (titles, cards); None = language spoken in the video
 
     def merged(self, patch: dict) -> "StyleDNA":
         """Deep-merge a partial dict into a copy of this style."""

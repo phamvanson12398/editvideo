@@ -211,6 +211,16 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
     if au:
         patch["audio"] = au
 
+    # ---- language of added text
+    for code, keys in (("ko", ("chữ tiếng hàn", "chữ hàn", "ngôn ngữ hàn", "tiếng hàn", "korean text")),
+                       ("vi", ("chữ tiếng việt", "chữ việt", "ngôn ngữ việt", "tiếng việt")),
+                       ("en", ("chữ tiếng anh", "ngôn ngữ anh", "tiếng anh", "english text")),
+                       ("ja", ("chữ tiếng nhật", "ngôn ngữ nhật", "tiếng nhật", "japanese text")),
+                       ("zh", ("chữ tiếng trung", "ngôn ngữ trung", "tiếng trung", "chinese text"))):
+        if _has(text, *keys):
+            patch["text_language"] = code
+            break
+
     # ---- extras
     ex: dict = {}
     if _has(text, "thanh tiến trình", "progress bar"):

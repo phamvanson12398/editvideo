@@ -47,6 +47,13 @@ def browser_executable() -> str | None:
     return hits[-1] if hits else None
 
 
+def default_concurrency() -> int:
+    env = os.environ.get("DIRECTOR_CONCURRENCY")
+    if env and env.isdigit():
+        return max(1, int(env))
+    return max(1, min(12, os.cpu_count() or 2))
+
+
 def render_output(plan: EditPlan, output_id: str, public_dir: Path, out_file: Path, *, draft: bool = False,
                   concurrency: int | None = None) -> Path:
     ensure_installed()
@@ -60,7 +67,8 @@ def render_output(plan: EditPlan, output_id: str, public_dir: Path, out_file: Pa
         npx(), "remotion", "render", "src/index.ts", "Main", str(out_file.resolve()),
         f"--props={props.resolve()}", f"--public-dir={public_dir.resolve()}", "--muted",
         "--codec=h264", "--log=error", f"--crf={'28' if draft else '17'}",
-        f"--concurrency={concurrency or max(1, min(8, (os.cpu_count() or 2) - 1))}",
+        f"--concurrency={concurrency or default_concurrency()}",
+        "--offthreadvideo-video-threads=4",
         "--timeout=120000",
     ]
     if draft:

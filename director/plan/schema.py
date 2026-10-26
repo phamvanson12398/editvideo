@@ -245,6 +245,7 @@ class EditPlan(BaseModel):
     hardsub: Optional[dict] = None  # {x,y,w,h} normalized source coords of burned-in text
     characters: dict[str, dict] = Field(default_factory=dict)  # id -> {name, color}
     genre: str = "unknown"
+    text_language: str = "vi"
     style_name: str = ""
     notes: str = ""
     draft: Optional[PlanDraft] = None

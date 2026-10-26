@@ -98,8 +98,8 @@ def test_plan_and_compile(tmp_path: Path):
         assert abs(a.start + a.duration - b.start) < 1e-3
     # burned-in subtitles + vertical crop -> dialogue clips keep the full frame
     assert any(c.reframe[outs[0].id].mode == "fit-blur" for c in plan.clips)
-    # with hardsub, captions are emphasis-only
-    assert plan.captions.mode == "emphasis-only"
+    # the video already has subtitles: no extra captions (the "big yellow word in the middle" is off by default)
+    assert plan.captions.mode == "none" and not plan.captions.enabled
     assert any(e.id == "vhs" for e in plan.effects)  # hook rewind
     assert all(Path(s.file).exists() for s in plan.audio.sfx)
     edl = export_edl(plan, tmp_path / "x.edl")
@@ -152,3 +152,17 @@ def test_whisper_gpu_failure_falls_back_to_cpu(monkeypatch, tmp_path):
     sents, lang = SP.transcribe(tmp_path / "a.wav")
     assert [c[1] for c in calls] == ["cuda", "cpu"]
     assert lang == "vi" and sents[0].text == "xin chào"
+
+
+def test_added_text_follows_video_language(tmp_path: Path):
+    idx = make_index(hardsub=False)
+    idx.language = "ko"
+    style = parse_style("drama dọc 9:16, hook bằng cú twist, còn tiếp", idx.genre)
+    plan = compile_plan(plan_rules(idx, style)[0], idx, style, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
+    texts = [e.params.get("text") for e in plan.effects if e.category == "text"]
+    assert "그 전에..." in texts and "다음 편에 계속..." in texts
+    assert not any(t and ("Trước" in t or "Còn tiếp" in t) for t in texts)
+    # explicit choice wins over the spoken language
+    style.text_language = "en"
+    plan = compile_plan(plan_rules(idx, style)[0], idx, style, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
+    assert "Earlier..." in [e.params.get("text") for e in plan.effects]

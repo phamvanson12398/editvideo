@@ -102,14 +102,26 @@ def _run_whisper(WhisperModel, wav, size: str, device: str, compute: str, langua
     except ValueError as e:  # unsupported compute type on this device
         warn(f"Không tải được Whisper với {compute} ({e}); thử lại với float32.")
         model = WhisperModel(size, device=device, compute_type="float32")
-    segments, info = model.transcribe(
-        str(wav),
-        language=language,
-        word_timestamps=True,
-        vad_filter=True,
-        vad_parameters={"min_silence_duration_ms": 300},
-        beam_size=5,
-    )
+    segments = info = None
+    if device == "cuda":
+        # batched inference is several times faster on GPU
+        try:
+            from faster_whisper import BatchedInferencePipeline  # type: ignore
+
+            batched = BatchedInferencePipeline(model=model)
+            segments, info = batched.transcribe(str(wav), language=language, word_timestamps=True,
+                                                batch_size=int(os.environ.get("DIRECTOR_WHISPER_BATCH", "8")))
+        except (ImportError, TypeError):
+            segments = None
+    if segments is None:
+        segments, info = model.transcribe(
+            str(wav),
+            language=language,
+            word_timestamps=True,
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 300},
+            beam_size=5 if device == "cuda" else 1,
+        )
     sentences: list[Sentence] = []
     for i, seg in enumerate(segments):  # decoding happens lazily here
         words = []
@@ -280,6 +292,17 @@ def merge_ocr_text(sentences: list[Sentence], lines: list[dict]) -> int:
 
 
 # ---------------------------------------------------------------- stems
+
+
+def separation_gpu_ok() -> bool:
+    if os.environ.get("DIRECTOR_DEMUCS_CPU"):
+        return True
+    try:
+        import torch  # type: ignore
+
+        return bool(torch.cuda.is_available())
+    except Exception:
+        return False
 
 
 def separate_stems(wav_stereo: str | Path, out_dir: str | Path) -> dict[str, str]:

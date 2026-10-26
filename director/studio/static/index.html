@@ -69,14 +69,21 @@ button.primary:disabled { opacity: .5; cursor: default; }
     </div>
     <input type="text" id="frameExtra" placeholder="Khung khác: 3:4, 21:9, 1080x1350..." style="margin-top:8px">
 
+    <label>Ngôn ngữ chữ chèn thêm (tiêu đề, "còn tiếp"...)</label>
+    <select id="textLang">
+      <option value="auto">Theo tiếng trong video</option>
+      <option value="vi">Tiếng Việt</option><option value="ko">Tiếng Hàn</option><option value="en">Tiếng Anh</option>
+      <option value="ja">Tiếng Nhật</option><option value="zh">Tiếng Trung</option>
+    </select>
     <div class="row">
       <div><label>Preset</label><select id="preset"><option value="">Tự chọn theo thể loại</option></select></div>
       <div><label>Số phương án</label><select id="variants"><option>1</option><option>2</option><option>3</option></select></div>
     </div>
     <div class="row">
       <div><label>AI (Antigravity)</label><select id="llm"><option value="auto">Tự động</option><option value="on">Bật</option><option value="off">Tắt (offline)</option></select></div>
-      <div><label>Vòng tự xem lại</label><select id="critic"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></div>
+      <div><label>Vòng tự xem lại</label><select id="critic"><option value="-1" selected>Tự động</option><option>0</option><option>1</option><option>2</option></select></div>
     </div>
+    <label><input type="checkbox" id="fast"> Dựng nhanh 720p (nhanh gần gấp đôi)</label>
     <label><input type="checkbox" id="draft"> Chỉ dựng bản nháp nhanh</label>
     <button class="primary" id="go" disabled>Dựng video</button>
     <p class="muted" id="hint">Chọn video để bắt đầu.</p>
@@ -125,7 +132,7 @@ $('#go').onclick = async () => {
   const fd = new FormData();
   fd.append('video', videoPath); fd.append('command', $('#command').value); fd.append('frames', frames());
   fd.append('preset', $('#preset').value); fd.append('variants', $('#variants').value); fd.append('use_llm', $('#llm').value);
-  fd.append('critic', $('#critic').value); fd.append('draft', $('#draft').checked);
+  fd.append('critic', $('#critic').value); fd.append('text_lang', $('#textLang').value); fd.append('fast', $('#fast').checked); fd.append('draft', $('#draft').checked);
   const r = await fetch('/api/edit', {method: 'POST', body: fd});
   const j = await r.json(); watch(j.job);
 };

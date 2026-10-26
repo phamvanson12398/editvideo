@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .. import i18n
 from ..effects.catalog import EFFECTS, EMOTION_COMBO
 from ..effects.rules import Candidate, apply_rules
 from ..perception.schema import Sentence, VideoIndex
@@ -356,6 +357,7 @@ def jump_cut_zoom(idx: VideoIndex, clips: list[DraftClip], effects: list[DraftEf
 def plan_rules(idx: VideoIndex, style: StyleDNA, intensity: str | None = None) -> list[PlanDraft]:
     if intensity:
         style = style.merged({"budget": {"intensity": intensity}})
+    lang = i18n.resolve(style.text_language, idx.language)
     units = speech_units(idx, style)
     score_units(idx, units)
     if style.target_duration:
@@ -374,7 +376,7 @@ def plan_rules(idx: VideoIndex, style: StyleDNA, intensity: str | None = None) -
         if hook:
             # hook -> quick VHS rewind -> "Trước đó..." -> story
             effects.append(DraftEffect(id="rewind", clip=0, at=clips[0].src_out - 0.01, dur=1.0))
-            effects.append(DraftEffect(id="time_skip", clip=1, at=clips[1].src_in, dur=1.4, params={"text": "Trước đó..."}))
+            effects.append(DraftEffect(id="time_skip", clip=1, at=clips[1].src_in, dur=1.4, params={"text": i18n.t("before", lang)}))
             if title:
                 effects.append(DraftEffect(id="title_slam", clip=0, at=clips[0].src_in, dur=min(2.0, clips[0].src_out - clips[0].src_in), params={"text": title}))
         elif title:
