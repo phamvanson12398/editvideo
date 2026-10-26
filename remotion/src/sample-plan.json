@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "source": "",
+  "source_size": [1280, 720],
+  "source_fps": 30,
+  "duration": 3,
+  "outputs": [{"id": "tiktok", "aspect": "9:16", "width": 1080, "height": 1920, "fps": 30, "platform": "tiktok", "letterbox": false}],
+  "safe_zones": {"tiktok": {"top": 0.1, "bottom": 0.2, "left": 0.04, "right": 0.14}},
+  "clips": [],
+  "effects": [
+    {"id": "title_slam", "category": "text", "start": 0.2, "end": 2.6, "params": {"text": "Director"}},
+    {"id": "focus_lines", "category": "manga", "start": 0.2, "end": 2.6, "params": {}}
+  ],
+  "captions": {"enabled": false, "preset": "word_pop", "mode": "full", "font": "Be Vietnam Pro", "weight": 800, "color": "#FFFFFF", "highlight": "#FFD400", "stroke": "#000000", "size": 1, "uppercase": false, "position": "auto", "emotion_styles": false, "lines": []},
+  "hardsub": null,
+  "characters": {},
+  "genre": "anime",
+  "style_name": "sample"
+}

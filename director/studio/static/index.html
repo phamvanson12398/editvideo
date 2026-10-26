@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Director Studio</title>
+<style>
+:root {
+  --bg: #f6f6f4; --panel: #ffffff; --text: #1d1d1f; --muted: #6e6e73; --line: #e2e2e0;
+  --accent: #e8590c; --accent-text: #fff; --ok: #2b8a3e; --err: #c92a2a; --code: #f1f1ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #141416; --panel: #1d1d20; --text: #ededf0; --muted: #9a9aa2; --line: #2e2e33;
+    --accent: #ff7a2f; --accent-text: #111; --ok: #51cf66; --err: #ff6b6b; --code: #26262a; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; }
+header h1 { margin: 0; font-size: 20px; }
+header span { color: var(--muted); font-size: 13px; }
+main { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.panel h2 { font-size: 15px; margin: 0 0 12px; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+input[type=text], textarea, select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+textarea { min-height: 84px; resize: vertical; }
+.drop { border: 2px dashed var(--line); border-radius: 10px; padding: 22px; text-align: center; color: var(--muted); cursor: pointer; }
+.drop.has { border-style: solid; color: var(--text); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; user-select: none; background: var(--bg); }
+.chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+button.primary { margin-top: 16px; width: 100%; padding: 11px; border: 0; border-radius: 9px; background: var(--accent); color: var(--accent-text); font-weight: 650; font-size: 15px; cursor: pointer; }
+button.primary:disabled { opacity: .5; cursor: default; }
+.log { background: var(--code); border-radius: 8px; padding: 10px; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; max-height: 260px; overflow: auto; white-space: pre-wrap; }
+.status { font-size: 13px; font-weight: 600; }
+.status.done { color: var(--ok); } .status.error { color: var(--err); }
+.outputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 12px; }
+.out { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.out video { width: 100%; max-height: 520px; background: #000; border-radius: 6px; }
+.out .name { font-size: 13px; margin: 6px 0; word-break: break-all; }
+.out button, .chat button { padding: 6px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 7px; cursor: pointer; font: inherit; font-size: 13px; }
+.chat { display: flex; gap: 8px; margin-top: 8px; }
+.chat input { flex: 1; }
+.summary { white-space: pre-wrap; font-size: 13px; color: var(--muted); }
+.muted { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header><h1>Director Studio</h1><span>Đưa video vào, mô tả phong cách, tool tự lo phần còn lại</span></header>
+<main>
+  <section class="panel">
+    <h2>1. Video gốc</h2>
+    <div class="drop" id="drop">Bấm để chọn hoặc kéo thả video vào đây</div>
+    <input type="file" id="file" accept="video/*" hidden>
+
+    <h2 style="margin-top:20px">2. Mô tả phong cách (tuỳ chọn)</h2>
+    <textarea id="command" placeholder="vd: drama dọc 9:16, hook bằng cú twist, 60 giây, phụ đề vàng to"></textarea>
+
+    <label>Khung hình (bấm để chọn nhiều, không chọn = giữ khung gốc)</label>
+    <div class="chips" id="frames">
+      <span class="chip" data-v="tiktok">TikTok 9:16</span>
+      <span class="chip" data-v="youtube">YouTube 16:9</span>
+      <span class="chip" data-v="4:5">Instagram 4:5</span>
+      <span class="chip" data-v="1:1">Vuông 1:1</span>
+      <span class="chip" data-v="điện ảnh">Điện ảnh</span>
+    </div>
+    <input type="text" id="frameExtra" placeholder="Khung khác: 3:4, 21:9, 1080x1350..." style="margin-top:8px">
+
+    <div class="row">
+      <div><label>Preset</label><select id="preset"><option value="">Tự chọn theo thể loại</option></select></div>
+      <div><label>Số phương án</label><select id="variants"><option>1</option><option>2</option><option>3</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>Claude AI</label><select id="llm"><option value="auto">Tự động</option><option value="on">Bật</option><option value="off">Tắt (offline)</option></select></div>
+      <div><label>Vòng tự xem lại</label><select id="critic"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></div>
+    </div>
+    <label><input type="checkbox" id="draft"> Chỉ dựng bản nháp nhanh</label>
+    <button class="primary" id="go" disabled>Dựng video</button>
+    <p class="muted" id="hint">Chọn video để bắt đầu.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Tiến trình <span class="status" id="status"></span></h2>
+    <div class="log" id="log">Chưa có việc nào.</div>
+    <div class="summary" id="summary"></div>
+    <div class="outputs" id="outputs"></div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+let videoPath = null, poll = null, since = 0;
+
+fetch('/api/presets').then(r => r.json()).then(p => {
+  for (const [k, v] of Object.entries(p)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = `${k}: ${v}`; $('#preset').appendChild(o);
+  }
+});
+document.querySelectorAll('#frames .chip').forEach(c => c.onclick = () => c.classList.toggle('on'));
+
+const drop = $('#drop');
+drop.onclick = () => $('#file').click();
+drop.ondragover = (e) => { e.preventDefault(); };
+drop.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); };
+$('#file').onchange = (e) => { if (e.target.files[0]) upload(e.target.files[0]); };
+
+async function upload(f) {
+  drop.textContent = `Đang tải lên ${f.name}...`;
+  const fd = new FormData(); fd.append('file', f);
+  const r = await fetch('/api/upload', {method: 'POST', body: fd});
+  const j = await r.json();
+  videoPath = j.path; drop.textContent = `✓ ${j.name}`; drop.classList.add('has');
+  $('#go').disabled = false; $('#hint').textContent = '';
+}
+
+function frames() {
+  const v = [...document.querySelectorAll('#frames .chip.on')].map(c => c.dataset.v);
+  const extra = $('#frameExtra').value.split(',').map(s => s.trim()).filter(Boolean);
+  return [...v, ...extra].join(',');
+}
+
+$('#go').onclick = async () => {
+  const fd = new FormData();
+  fd.append('video', videoPath); fd.append('command', $('#command').value); fd.append('frames', frames());
+  fd.append('preset', $('#preset').value); fd.append('variants', $('#variants').value); fd.append('use_llm', $('#llm').value);
+  fd.append('critic', $('#critic').value); fd.append('draft', $('#draft').checked);
+  const r = await fetch('/api/edit', {method: 'POST', body: fd});
+  const j = await r.json(); watch(j.job);
+};
+
+function watch(id) {
+  since = 0; $('#log').textContent = ''; $('#outputs').innerHTML = ''; $('#summary').textContent = '';
+  $('#go').disabled = true;
+  clearInterval(poll);
+  poll = setInterval(async () => {
+    const j = await (await fetch(`/api/jobs/${id}?since=${since}`)).json();
+    since = j.next;
+    if (j.logs.length) { $('#log').textContent += j.logs.join('\n') + '\n'; $('#log').scrollTop = 1e9; }
+    $('#status').textContent = {queued: 'đang chờ', running: 'đang dựng...', done: 'xong', error: 'lỗi'}[j.status];
+    $('#status').className = 'status ' + j.status;
+    if (j.status === 'done' || j.status === 'error') {
+      clearInterval(poll); $('#go').disabled = !videoPath;
+      if (j.error) $('#log').textContent += '\n' + j.error;
+      $('#summary').textContent = j.summary || '';
+      render(j);
+    }
+  }, 1000);
+}
+
+function render(j) {
+  const box = $('#outputs'); box.innerHTML = '';
+  j.outputs.forEach((o, i) => {
+    const plan = j.plans.find(p => o.path.includes(p.split(/[\\/]/).pop().replace('.plan.json', ''))) || j.plans[0];
+    const d = document.createElement('div'); d.className = 'out';
+    d.innerHTML = `<video src="${o.url}" controls playsinline></video>
+      <div class="name">${o.path.split(/[\\/]/).pop()}</div>
+      <a href="${o.url}" download><button>Tải về</button></a>
+      <button class="pick">Chọn bản này</button>
+      <div class="chat"><input type="text" placeholder="Sửa bằng lời: intro nhanh hơn, bỏ đoạn 0:40..."><button>Sửa</button></div>`;
+    d.querySelector('.pick').onclick = async () => {
+      const fd = new FormData(); fd.append('plan', plan); await fetch('/api/choose', {method: 'POST', body: fd});
+      d.querySelector('.pick').textContent = '✓ Đã ghi nhớ lựa chọn';
+    };
+    const input = d.querySelector('.chat input');
+    d.querySelector('.chat button').onclick = async () => {
+      if (!input.value.trim()) return;
+      const fd = new FormData(); fd.append('plan', plan); fd.append('instruction', input.value); fd.append('use_llm', $('#llm').value);
+      const r = await fetch('/api/revise', {method: 'POST', body: fd}); watch((await r.json()).job);
+    };
+    box.appendChild(d);
+  });
+}
+</script>
+</body>
+</html>

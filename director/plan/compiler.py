@@ -442,6 +442,7 @@ def compile_plan(
         clips.append(Clip(
             id=f"c{k}", file=f"clips/c{k}.mp4", start=round(t, 3), duration=round(wc.out_dur, 3),
             src_in=wc.src_in, src_out=wc.src_out, speed=wc.speed, reverse=wc.reverse, freeze=wc.freeze, role=wc.role,
+            interp=wc.interp, filters=list(wc.filters),
         ))
         t += wc.out_dur
     total = round(t, 3)

@@ -28,10 +28,6 @@ def _contrast(rgb, c, pivot=0.5):
     return (rgb - pivot) * c + pivot
 
 
-def _curve_s(x, k=0.15):
-    return x + k * np.sin(2 * np.pi * x) * -0.5 / np.pi * 2
-
-
 def warm(rgb):
     out = rgb * np.array([1.06, 1.0, 0.9])
     return _sat(_contrast(out, 1.05), 1.08)
@@ -107,7 +103,9 @@ def write_cube(name: str, fn, path: Path) -> Path:
     return path
 
 
-def lut_path(name_or_path: str | None, assets: Path, cache: Path) -> Path | None:
+def lut_path(name_or_path: str | None, assets: Path, cache: Path, intensity: float = 1.0) -> Path | None:
+    """Built-in LUTs are generated pre-blended with the identity at `intensity` (no runtime cost).
+    User .cube files are used as-is."""
     if not name_or_path:
         return None
     p = Path(name_or_path)
@@ -119,8 +117,9 @@ def lut_path(name_or_path: str | None, assets: Path, cache: Path) -> Path | None
     fn = LUTS.get(name_or_path)
     if fn is None:
         return None
+    k = round(float(min(max(intensity, 0.0), 1.0)), 2)
     cache.mkdir(parents=True, exist_ok=True)
-    out = cache / f"{name_or_path}.cube"
+    out = cache / f"{name_or_path}_{int(k * 100)}.cube"
     if not out.exists():
-        write_cube(name_or_path, fn, out)
+        write_cube(name_or_path, lambda rgb: rgb * (1 - k) + fn(rgb) * k, out)
     return out

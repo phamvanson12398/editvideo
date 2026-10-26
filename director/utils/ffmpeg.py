@@ -97,3 +97,22 @@ def video_codec_args(quality: str = "final") -> list[str]:
     crf = {"final": "18", "draft": "30", "intermediate": "17"}[quality]
     preset = {"final": "medium", "draft": "ultrafast", "intermediate": "veryfast"}[quality]
     return ["-c:v", "libx264", "-preset", preset, "-crf", crf, "-pix_fmt", "yuv420p"]
+
+
+@functools.lru_cache(maxsize=1)
+def ffmpeg_major() -> int:
+    try:
+        out = subprocess.run([ffmpeg_bin(), "-version"], capture_output=True, text=True).stdout
+        import re
+
+        m = re.search(r"ffmpeg version n?(\d+)", out)
+        return int(m.group(1)) if m else 6
+    except Exception:
+        return 6
+
+
+def filter_script_args(path: str | Path) -> list[str]:
+    """Pass a long filter graph from a file (syntax changed in ffmpeg 7)."""
+    if ffmpeg_major() >= 7:
+        return ["-/filter_complex", str(path)]
+    return ["-filter_complex_script", str(path)]

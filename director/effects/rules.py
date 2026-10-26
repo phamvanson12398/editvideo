@@ -75,8 +75,8 @@ def apply_rules(cands: list[Candidate], style: StyleDNA, duration: float) -> lis
         elif c.category not in FREE_CATEGORIES:
             if c.t - last_small < small_gap or c.t - last_strong < breath:
                 continue
-            if prev_id == c.id:
-                continue
+            if prev_id == c.id and c.t - last_by_id.get(c.id, -1e9) < 2 * small_gap:
+                continue  # no back-to-back repeats
             last_small = c.t
         kept.append(c)
         last_by_id[c.id] = c.t

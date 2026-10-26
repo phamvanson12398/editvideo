@@ -124,6 +124,8 @@ class Clip(BaseModel):
     handle_pre: float = 0.0  # extra seconds available before start (for overlap transitions)
     handle_post: float = 0.0
     role: str = "main"
+    interp: bool = False  # motion-interpolated slow motion at prep
+    filters: list[str] = Field(default_factory=list)  # extra ffmpeg video filters at prep
     reframe: dict[str, ClipReframe] = Field(default_factory=dict)  # output id -> reframe
     faces: list[dict] = Field(default_factory=list)  # [{t (clip-relative), boxes:[{x,y,w,h,character}]}]
 
