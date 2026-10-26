@@ -122,3 +122,33 @@ def test_parts_and_target(tmp_path: Path):
     drafts = plan_rules(idx, style)
     assert len(drafts) == 2
     assert any(e.id == "combo.cliffhanger" for e in drafts[0].effects)
+
+
+def test_whisper_gpu_failure_falls_back_to_cpu(monkeypatch, tmp_path):
+    """Missing cublas64_12.dll on Windows must not kill the job: retry on CPU."""
+    import sys
+    import types
+
+    import director.perception.speech as SP
+
+    calls = []
+
+    class Seg:
+        start, end, text = 0.0, 1.0, "xin chào"
+        words = [types.SimpleNamespace(word="xin", start=0.0, end=0.4), types.SimpleNamespace(word="chào", start=0.5, end=1.0)]
+
+    class FakeModel:
+        def __init__(self, size, device, compute_type):
+            calls.append((size, device, compute_type))
+            self.device = device
+
+        def transcribe(self, *a, **k):
+            if self.device == "cuda":
+                raise RuntimeError("Library cublas64_12.dll is not found or cannot be loaded")
+            return iter([Seg()]), types.SimpleNamespace(language="vi")
+
+    monkeypatch.setitem(sys.modules, "faster_whisper", types.SimpleNamespace(WhisperModel=FakeModel))
+    monkeypatch.setattr(SP, "gpu_available", lambda: True)
+    sents, lang = SP.transcribe(tmp_path / "a.wav")
+    assert [c[1] for c in calls] == ["cuda", "cpu"]
+    assert lang == "vi" and sents[0].text == "xin chào"

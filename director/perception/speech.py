@@ -28,37 +28,80 @@ def _norm(w: str) -> str:
     return re.sub(r"[^\w\s]", "", w.lower()).strip()
 
 
+_DLL_DIRS_ADDED = False
+
+
+def _add_cuda_dll_dirs() -> None:
+    """Windows: CUDA DLLs installed by pip (nvidia-cublas-cu12, nvidia-cudnn-cu12, torch) live inside
+    site-packages and are not on PATH, so CTranslate2 cannot find cublas64_12.dll. Register them."""
+    global _DLL_DIRS_ADDED
+    if _DLL_DIRS_ADDED or sys.platform != "win32":
+        return
+    _DLL_DIRS_ADDED = True
+    import site
+
+    roots = [Path(p) for p in site.getsitepackages()]
+    try:
+        roots.append(Path(site.getusersitepackages()))
+    except Exception:
+        pass
+    dirs = []
+    for r in roots:
+        dirs += [d for d in (r / "nvidia").glob("*/bin") if d.is_dir()]
+        dirs += [d for d in (r / "torch" / "lib",) if d.is_dir()]
+    for env in ("CUDA_PATH", "CUDA_PATH_V12_6", "CUDA_PATH_V12_4"):
+        if os.environ.get(env):
+            dirs.append(Path(os.environ[env]) / "bin")
+    for d in dirs:
+        if d.is_dir():
+            try:
+                os.add_dll_directory(str(d))
+            except OSError:
+                pass
+            os.environ["PATH"] = str(d) + os.pathsep + os.environ.get("PATH", "")
+
+
+def _cuda_libs_ok() -> bool:
+    if sys.platform != "win32":
+        return True
+    import ctypes
+
+    for name in ("cublas64_12.dll", "cudnn_ops64_9.dll"):
+        try:
+            ctypes.WinDLL(name)
+        except OSError:
+            return False
+    return True
+
+
 def gpu_available() -> bool:
+    if os.environ.get("DIRECTOR_WHISPER_DEVICE", "").lower() == "cpu":
+        return False
+    _add_cuda_dll_dirs()
     try:
         import ctranslate2  # type: ignore
 
-        return ctranslate2.get_cuda_device_count() > 0
+        if ctranslate2.get_cuda_device_count() <= 0:
+            return False
     except Exception:
         return False
+    if not _cuda_libs_ok():
+        warn("Có GPU NVIDIA nhưng thiếu thư viện CUDA 12 (cublas64_12.dll / cuDNN 9) nên Whisper chạy bằng CPU. "
+             "Muốn chạy bằng GPU: chạy 5_CAI_THEM_GPU.bat (hoặc pip install nvidia-cublas-cu12 nvidia-cudnn-cu12).")
+        return False
+    return True
 
 
 # ---------------------------------------------------------------- ASR
 
 
-def transcribe(wav: str | Path, model_size: str | None = None, language: str | None = None) -> tuple[list[Sentence], str | None]:
-    try:
-        from faster_whisper import WhisperModel  # type: ignore
-    except ImportError:
-        warn("Chưa cài faster-whisper nên không chép được lời. Cài: pip install 'director-video[asr]'")
-        return [], None
-
-    gpu = gpu_available()
-    size = model_size or os.environ.get("DIRECTOR_WHISPER_MODEL") or ("large-v3-turbo" if gpu else "small")
-    # Pascal GPUs (GTX 10xx) have slow FP16: int8 is the fast, accurate choice there.
-    compute = os.environ.get("DIRECTOR_WHISPER_COMPUTE") or ("int8_float32" if gpu else "int8")
-    device = "cuda" if gpu else "cpu"
+def _run_whisper(WhisperModel, wav, size: str, device: str, compute: str, language: str | None):
     log(f"Chép lời bằng Whisper '{size}' trên {device} ({compute})...")
     try:
         model = WhisperModel(size, device=device, compute_type=compute)
-    except Exception as e:  # e.g. unsupported compute type on this GPU
+    except ValueError as e:  # unsupported compute type on this device
         warn(f"Không tải được Whisper với {compute} ({e}); thử lại với float32.")
         model = WhisperModel(size, device=device, compute_type="float32")
-
     segments, info = model.transcribe(
         str(wav),
         language=language,
@@ -68,7 +111,7 @@ def transcribe(wav: str | Path, model_size: str | None = None, language: str | N
         beam_size=5,
     )
     sentences: list[Sentence] = []
-    for i, seg in enumerate(segments):
+    for i, seg in enumerate(segments):  # decoding happens lazily here
         words = []
         for w in seg.words or []:
             txt = w.word.strip()
@@ -79,7 +122,31 @@ def transcribe(wav: str | Path, model_size: str | None = None, language: str | N
         if not text:
             continue
         sentences.append(Sentence(id=f"s{i}", t0=round(seg.start, 3), t1=round(seg.end, 3), text=text, words=words))
-    lang = getattr(info, "language", None)
+    return sentences, getattr(info, "language", None)
+
+
+def transcribe(wav: str | Path, model_size: str | None = None, language: str | None = None) -> tuple[list[Sentence], str | None]:
+    _add_cuda_dll_dirs()
+    try:
+        from faster_whisper import WhisperModel  # type: ignore
+    except ImportError:
+        warn("Chưa cài faster-whisper nên không chép được lời. Cài: pip install 'director-video[asr]'")
+        return [], None
+
+    gpu = gpu_available()
+    size = model_size or os.environ.get("DIRECTOR_WHISPER_MODEL") or ("large-v3-turbo" if gpu else "small")
+    # Pascal GPUs (GTX 10xx) have slow FP16: int8 is the fast, accurate choice there.
+    compute = os.environ.get("DIRECTOR_WHISPER_COMPUTE") or ("int8_float32" if gpu else "int8")
+    try:
+        sentences, lang = _run_whisper(WhisperModel, wav, size, "cuda" if gpu else "cpu", compute, language)
+    except RuntimeError as e:
+        if not gpu:
+            raise
+        # Missing/incompatible CUDA libraries show up only when decoding starts: fall back to CPU.
+        warn(f"Whisper trên GPU lỗi ({e}). Chuyển sang CPU (chậm hơn). "
+             "Sửa: chạy 5_CAI_THEM_GPU.bat hoặc pip install nvidia-cublas-cu12 nvidia-cudnn-cu12.")
+        cpu_size = model_size or os.environ.get("DIRECTOR_WHISPER_MODEL") or "small"
+        sentences, lang = _run_whisper(WhisperModel, wav, cpu_size, "cpu", "int8", language)
     log(f"Chép được {len(sentences)} câu (ngôn ngữ: {lang}).")
     return _split_long(sentences), lang
 

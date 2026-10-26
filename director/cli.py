@@ -135,6 +135,19 @@ def cmd_doctor(a: argparse.Namespace) -> int:
         row(True, "faster-whisper (chép lời)")
     except ImportError:
         row(False, "faster-whisper (chép lời)", "pip install 'director-video[asr]'")
+    try:
+        from .perception.speech import _add_cuda_dll_dirs, _cuda_libs_ok
+
+        _add_cuda_dll_dirs()
+        import ctranslate2  # type: ignore
+
+        if ctranslate2.get_cuda_device_count() > 0:
+            row(_cuda_libs_ok(), "Whisper chạy bằng GPU (CUDA 12 + cuDNN 9)",
+                "" if _cuda_libs_ok() else "thiếu cublas64_12.dll/cuDNN: chạy 5_CAI_THEM_GPU.bat (đang dùng CPU)")
+        else:
+            row(None, "Whisper chạy bằng GPU", "không thấy GPU CUDA, dùng CPU")
+    except ImportError:
+        pass
     for mod, name, extra in (("rapidocr_onnxruntime", "OCR phụ đề có sẵn", "ocr"), ("demucs", "Demucs tách thoại/nhạc", "separation"),
                              ("pyannote.audio", "pyannote nhận diện người nói", "diarize"), ("fastapi", "Studio (giao diện web)", "studio")):
         try:
