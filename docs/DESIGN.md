@@ -15,7 +15,8 @@ Hầu hết tool "AI edit" hiện nay chạy **một lượt**: phân tích → 
 | 2 | **Style DNA**: học phong cách từ video mẫu | Đưa vào một video bạn thích, tool đo nhịp cắt, kiểu phụ đề, màu, tần suất zoom, cách dùng tiếng động... rồi lưu thành hồ sơ phong cách dùng lại được. |
 | 3 | **Hiểu nội dung, không chỉ hiểu thời gian** | Tool biết câu nào là hook, câu nào là cao trào, chỗ nào người nói nói hỏng rồi nói lại (giữ lần nói hay nhất), câu nào nên nhấn bằng zoom. |
 | 4 | **Sửa bằng hội thoại** | "Đoạn mở đầu nhanh hơn", "bỏ phụ đề ở đoạn 0:40". Tool chỉ sửa phần liên quan trong kế hoạch dựng, không dựng lại từ đầu. |
-| 5 | **Nhiều phiên bản cùng lúc** | Xuất 3 phương án (an toàn / mạnh tay / thử nghiệm) và nhiều khung hình (9:16, 1:1, 16:9) từ một kế hoạch. |
+| 5 | **Nhiều phiên bản cùng lúc** | Xuất 3 phương án (an toàn / mạnh tay / thử nghiệm) từ một kế hoạch. |
+| 5b | **Khung hình tuỳ theo lệnh** | Khung nào cũng được: "TikTok", "khung Instagram", "điện ảnh", "4:5", "1080x1350", hoặc nhiều khung một lúc. Không nói gì thì giữ khung gốc. Xem mục 3 "Khung hình linh hoạt". |
 | 6 | **Tối ưu giữ chân người xem** | Chấm điểm hook 3 giây đầu, phát hiện đoạn dễ khiến người xem lướt qua (im lặng dài, hình tĩnh lâu, lặp ý) và xử lý. |
 | 7 | **Học thói quen của bạn** | Mỗi lần bạn sửa tay hoặc chọn phương án nào, tool ghi nhớ để lần sau dựng sát ý bạn hơn. |
 | 8 | **Không khoá bạn trong tool** | Xuất timeline OpenTimelineIO (FCPXML/EDL) để mở trong DaVinci Resolve / Premiere và chỉnh tiếp. |
@@ -80,7 +81,7 @@ Nguyên tắc thiết kế:
 | Nói hỏng rồi nói lại | So sánh độ giống câu liên tiếp (embedding văn bản) | Giữ lần nói hay nhất |
 | Ngữ điệu (to/nhỏ, cao/thấp) | **librosa** / **parselmouth** | Zoom vào từ được nhấn mạnh |
 | Chuyển cảnh | **PySceneDetect** / **TransNetV2** | Cắt đúng điểm cảnh |
-| Mặt, tư thế, vị trí người | **MediaPipe**, **YOLO11** | Reframe 9:16 bám theo người, tránh phụ đề che mặt |
+| Mặt, tư thế, vị trí người | **MediaPipe**, **YOLO11** | Reframe theo khung đích, bám theo người, tránh phụ đề che mặt |
 | Cảm xúc khuôn mặt | Model nhận diện cảm xúc nhẹ trên mặt đã cắt | Chọn khoảnh khắc biểu cảm |
 | Năng lượng âm thanh, beat nhạc | **librosa** (onset, beat tracking) | Cắt theo nhịp, tìm cao trào |
 | Ý nghĩa hình ảnh | **SigLIP / CLIP** embedding mỗi keyframe | Tìm cảnh bằng câu chữ ("đoạn cầm điện thoại") |
@@ -122,7 +123,7 @@ Mọi phong cách, dù đến từ câu chữ, video mẫu hay hồ sơ đã lư
   "color":       { "lut": "warm-pop.cube", "intensity": 0.7 },
   "audio":       { "music_mood": "upbeat", "duck_db": -14, "sfx": ["whoosh", "pop"], "loudness_lufs": -14 },
   "broll":       { "enabled": true, "density": "medium", "source": ["pexels", "local"] },
-  "aspect":      ["9:16"]
+  "frames":      null   // null = lấy từ lệnh của người dùng, không có thì giữ khung gốc
 }
 ```
 
@@ -155,11 +156,14 @@ Quy trình suy nghĩ:
 ```jsonc
 {
   "version": 3,
-  "output": { "aspect": "9:16", "fps": 30, "size": [1080, 1920] },
+  "outputs": [   // một Edit Plan, nhiều khung; mỗi khung có reframe/bố cục riêng
+    { "id": "tiktok", "aspect": "9:16", "size": [1080, 1920], "fps": 30, "safe_zone": "tiktok" },
+    { "id": "feed",   "aspect": "4:5",  "size": [1080, 1350], "fps": 30, "safe_zone": "instagram" }
+  ],
   "tracks": {
     "video": [
       { "id": "c1", "src": "input.mp4", "in": 88.0, "out": 91.2,
-        "reframe": { "mode": "follow-face" },
+        "reframe": { "default": "follow-face", "per_output": { "feed": "fit-blur" } },
         "ops": [{ "type": "punch_in", "at": 0.6, "scale": 1.25, "ease": "spring" }] },
       { "id": "c2", "src": "broll/pexels_123.mp4", "in": 0, "out": 1.5, "role": "broll" }
     ],
@@ -179,6 +183,51 @@ Quy trình suy nghĩ:
 ```
 
 Schema định nghĩa bằng **Pydantic** (Python), xuất JSON Schema, sinh type **zod/TypeScript** cho Remotion. Một nguồn sự thật cho cả hai phía.
+
+### Khung hình linh hoạt (theo lệnh)
+
+Khung hình không cố định. Người dùng ra lệnh thế nào thì tool dựng theo khung đó.
+
+**Hiểu lệnh về khung.** Director Agent chuyển câu chữ thành danh sách `outputs`:
+
+| Người dùng nói | Khung | Kích thước mặc định |
+|---|---|---|
+| "TikTok", "Reels", "Shorts", "video dọc" | 9:16 | 1080×1920 |
+| "YouTube", "video ngang" | 16:9 | 1920×1080 (hoặc 3840×2160 nếu nói "4K") |
+| "Instagram feed", "khung bài đăng" | 4:5 | 1080×1350 |
+| "vuông", "Facebook feed" | 1:1 | 1080×1080 |
+| "điện ảnh", "cinematic" | 2.39:1 | 1920×804, hoặc 16:9 có viền đen nếu cần đăng nền tảng |
+| "21:9", "ultrawide" | 21:9 | 2560×1080 |
+| "3:4", "2:3", "5:4"... | đúng tỉ lệ đó | cạnh dài 1920 |
+| "1080x1350", "720p dọc" | đúng kích thước đó | |
+| "cả TikTok lẫn YouTube" | nhiều khung | mỗi khung một file |
+| không nói gì | giữ khung gốc | giữ kích thước gốc |
+
+Kích thước luôn được làm tròn về số chẵn (yêu cầu của H.264/HEVC). Tỉ lệ lạ vẫn được chấp nhận, kèm cảnh báo nếu nền tảng đích không hỗ trợ.
+
+**Cách đưa video gốc vào khung đích** (`reframe`), chọn theo lệnh hoặc để agent tự chọn theo nội dung từng đoạn:
+
+| Chế độ | Làm gì | Hợp với |
+|---|---|---|
+| `follow-face` | Cắt khung bám theo mặt người nói, chuyển động mượt (lọc Kalman / làm mượt quỹ đạo) | Video nói chuyện |
+| `follow-subject` | Bám theo vật thể/người chuyển động (YOLO + tracking) | Thể thao, hành động, thú cưng |
+| `speaker-switch` | Có 2–3 người thì nhảy khung sang người đang nói | Podcast, phỏng vấn |
+| `split` | Chia khung trên/dưới hoặc trái/phải, mỗi người một ô | Podcast 2 người trong khung dọc |
+| `fit-blur` | Giữ nguyên hình, phần thừa lấp bằng chính video làm mờ | Cảnh rộng không nên cắt |
+| `fit-pad` | Giữ nguyên hình, thêm viền màu hoặc nền thiết kế | Phong cách tối giản, có chữ ở viền |
+| `letterbox` | Thêm viền đen trên dưới | Phong cách điện ảnh |
+| `center` / `manual` | Cắt giữa, hoặc theo toạ độ người dùng chỉ định | Khi cần kiểm soát tay |
+
+Mỗi clip có thể dùng chế độ khác nhau, và mỗi khung đầu ra có thể ghi đè (`per_output`). Ví dụ cùng một cảnh: bản 9:16 dùng `follow-face`, bản 4:5 dùng `fit-blur`.
+
+**Bố cục tự thích ứng.** Lớp phủ Remotion không dùng toạ độ pixel cố định mà dùng **bố cục theo vùng** (top / center / lower-third...) tính theo khung đích:
+
+- Mỗi nền tảng có **vùng an toàn** riêng (TikTok có nút bấm bên phải và chú thích phía dưới; Shorts, Reels khác một chút). Phụ đề và chữ luôn nằm trong vùng an toàn.
+- Cỡ chữ và số từ mỗi dòng phụ đề tự co giãn theo chiều rộng khung: khung dọc ít chữ hơn, chữ to hơn; khung ngang nhiều chữ hơn một dòng.
+- Phụ đề tự né mặt người (dùng vị trí mặt từ Perception).
+- Critic kiểm tra riêng từng khung đầu ra.
+
+**Render nhiều khung.** Phần dùng chung (khử ồn, mix âm thanh, AI ops, LUT) chỉ xử lý một lần. Chỉ bước reframe và lớp phủ chạy riêng cho từng khung.
 
 ### ⑤ Effect Registry: thư viện hiệu ứng dạng plugin
 
@@ -208,10 +257,10 @@ Thêm hiệu ứng mới chỉ cần thêm plugin, không phải sửa agent.
 ```
 Edit Plan
   ├─► AI ops (chỉ các đoạn cần, có cache theo hash) ──► clip đã xử lý
-  ├─► ffmpeg: cắt + reframe + LUT + speed ──► base.mp4 (NVENC)
-  ├─► Remotion: lớp phủ trong suốt ──► overlay.mov (ProRes 4444) / .webm (VP9 alpha)
+  ├─► ffmpeg: cắt + LUT + speed (chung) → reframe riêng từng khung ──► base_<khung>.mp4 (NVENC)
+  ├─► Remotion: lớp phủ trong suốt cho từng khung ──► overlay.mov (ProRes 4444) / .webm (VP9 alpha)
   ├─► audio mix: voice + music (ducking) + sfx ──► mix.wav (loudnorm)
-  └─► ffmpeg overlay + mux ──► final.mp4
+  └─► ffmpeg overlay + mux ──► final_<khung>.mp4 (mỗi khung một file)
 ```
 
 - **Bản nháp:** 480p, preset nhanh, bỏ AI ops nặng (dùng bản xấp xỉ). Mục tiêu dưới 1 phút cho video 1 phút.
@@ -307,7 +356,7 @@ editvideo/
 | Mốc | Nội dung | Xong khi |
 |---|---|---|
 | **M1: Nền móng** | Schema Edit Plan, CLI, Perception cơ bản (whisper, silence, scene), render ffmpeg + Remotion phụ đề, ghép lớp | `director edit in.mp4 --style "cắt im lặng, phụ đề to"` ra MP4 đúng |
-| **M2: Đẹp hơn** | Reframe 9:16 theo mặt, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Video nói chuyện ra chất lượng đăng TikTok được |
+| **M2: Đẹp hơn** | Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo mặt, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Video nói chuyện ra chất lượng đăng TikTok được |
 | **M3: Bộ não** | Director Agent dùng tool, Style DNA từ câu chữ, Effect Registry | Mô tả tự do → kế hoạch dựng hợp lý |
 | **M4: Tự sửa** | Bản nháp nhanh, Critic Loop, render theo cache | Điểm Critic tăng sau mỗi vòng |
 | **M5: Studio** | Web UI, sửa bằng chat, nhiều phương án, xuất OTIO | Dùng hằng ngày không cần dòng lệnh |
