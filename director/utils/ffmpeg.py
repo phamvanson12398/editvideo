@@ -64,7 +64,7 @@ def probe(path: str | Path) -> dict:
 @functools.lru_cache(maxsize=1)
 def encoders() -> set[str]:
     try:
-        out = subprocess.run([ffmpeg_bin(), "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
+        out = subprocess.run([ffmpeg_bin(), "-hide_banner", "-encoders"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
     except Exception:
         return set()
     names = set()
@@ -102,7 +102,7 @@ def video_codec_args(quality: str = "final") -> list[str]:
 @functools.lru_cache(maxsize=1)
 def ffmpeg_major() -> int:
     try:
-        out = subprocess.run([ffmpeg_bin(), "-version"], capture_output=True, text=True).stdout
+        out = subprocess.run([ffmpeg_bin(), "-version"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
         import re
 
         m = re.search(r"ffmpeg version n?(\d+)", out)

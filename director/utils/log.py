@@ -19,6 +19,12 @@ def remove_listener(fn: Callable[[str], None]) -> None:
         _listeners.remove(fn)
 
 
+def reset_clock() -> None:
+    """Start the [..s] counter from zero (one count per job, also inside the long-running Studio)."""
+    global _t0
+    _t0 = time.time()
+
+
 def log(msg: str) -> None:
     line = f"[{time.time() - _t0:7.1f}s] {msg}"
     print(line, file=sys.stderr, flush=True)

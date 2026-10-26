@@ -132,7 +132,7 @@ def cmd_doctor(a: argparse.Namespace) -> int:
     row(bool(shutil.which("ffmpeg")), "ffmpeg", f"phiên bản {ffmpeg_major()}" if shutil.which("ffmpeg") else "cài ffmpeg và thêm vào PATH")
     row(nvenc_ok() if shutil.which("ffmpeg") else False, "NVENC (encode bằng GPU NVIDIA)", "không bắt buộc")
     node = shutil.which("node")
-    row(bool(node), "Node.js", subprocess.run([node, "-v"], capture_output=True, text=True).stdout.strip() if node else "cài Node.js 18+")
+    row(bool(node), "Node.js", subprocess.run([node, "-v"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip() if node else "cài Node.js 18+")
     row((REMOTION_DIR / "node_modules" / "remotion").exists(), "Remotion", "chạy `npm install` trong remotion/" if not (REMOTION_DIR / "node_modules").exists() else "")
     row(True if browser_executable() else None, "Trình duyệt cho Remotion", browser_executable() or "Remotion tự tải khi render lần đầu")
     try:

@@ -182,9 +182,19 @@ def plan_with_llm(idx: VideoIndex, style: StyleDNA, command: str, variant: str |
     baseline = plan_rules(idx, style)
     prefs = preference_notes()
     D = idx.source.duration
+    need_story = not idx.story_summary  # one AI call does story understanding + planning (much faster)
     content: list[dict] = [
         {"type": "text", "text": index_digest(idx)},
         *keyframe_blocks(idx, 12),
+    ]
+    if need_story and provider() in ("antigravity", "gemini") and idx.source.duration <= 3600:
+        content += [{"type": "text", "text": "[toàn bộ video gốc]"}, video_block(idx.source.path)]
+    story_req = ("""
+ALSO understand the story first and return it in "story": {"summary": "2-4 câu tóm tắt (tiếng Việt)",
+ "characters": {"C0": {"name": "tên từ lời thoại hoặc vai"}}, "sentences": {"s3": {"emotion": "...", "character": "C0"}},
+ "beats": [{"t0": 0, "t1": 0, "type": "setup|conflict|climax|twist|resolution|cliffhanger", "intensity": 0.0, "summary": ""}]}
+Only include sentences you correct.""" if need_story else "")
+    content += [
         {"type": "text", "text": f"""EFFECT CATALOG:
 {catalog_for_llm()}
 
@@ -204,9 +214,22 @@ An automatic baseline plan (valid, rule-based) is below. Improve it like a top e
 word boundaries (use word timings), effects/sfx placed exactly on the right words/beats, music, titles in the on-screen text language.
 Baseline: {json.dumps({'parts': [b.model_dump() for b in baseline]}, ensure_ascii=False)}
 
-Return JSON: {{"parts": [PlanDraft, ...]}} with exactly {style.parts} part(s)."""},
+{story_req}
+Return JSON: {{{'"story": {...}, ' if need_story else ''}"parts": [PlanDraft, ...]}} with exactly {style.parts} part(s)."""},
     ]
-    drafts = ask_json(SYSTEM_DIRECTOR, content, validate=lambda d: _validate_drafts(d, D), effort="high", max_tokens=64000)
+    holder: dict = {}
+
+    def validate(d: Any):
+        holder["story"] = d.get("story") if isinstance(d, dict) else None
+        return _validate_drafts(d, D)
+
+    drafts = ask_json(SYSTEM_DIRECTOR, content, validate=validate, effort="high", max_tokens=64000)
+    if holder.get("story"):
+        try:
+            apply_story(idx, holder["story"])
+            log(f"AI tóm tắt: {idx.story_summary[:200]}")
+        except Exception:
+            pass
     for d in drafts:
         log(f"AI lên kế hoạch: {len(d.clips)} đoạn, {len(d.effects)} hiệu ứng. {d.notes}")
     return drafts

@@ -23,7 +23,7 @@ from .render.remotion import render_output
 from .style.dna import StyleDNA
 from .style.parse import parse_style
 from .utils.ffmpeg import run
-from .utils.log import log, warn
+from .utils.log import log, reset_clock, warn
 
 
 @dataclass
@@ -118,7 +118,7 @@ def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
 
         base = style_from_reference(opt.reference, _ref_dir(opt), base, use_llm)
     style = parse_style(opt.command, idx.genre, base)
-    if use_llm and opt.command.strip():
+    if use_llm and opt.command.strip() and os.environ.get("DIRECTOR_AI_FULL"):
         try:
             from .agent.director import refine_style
 
@@ -194,11 +194,13 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     res = JobResult(job_dir=job)
 
     apply_config(opt)
+    reset_clock()
     t_start = time.time()
     idx = analyze(video, job, genre_hint=opt.genre, whisper_model=opt.whisper_model, language=opt.language,
                   separate=opt.separate, force=opt.force_analyze)
     use_llm = llm_enabled(opt)
-    if use_llm:
+    if use_llm and ((job / "story.json").exists() or os.environ.get("DIRECTOR_AI_FULL")):
+        # cached story (instant) — otherwise the planning call understands the story itself
         try:
             from .agent.director import understand_story
 
@@ -216,6 +218,12 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     log(f"Phong cách: {style.name} | khung: {', '.join(o.id for o in outputs)} | AI: {provider_label() if use_llm else 'tắt (offline)'}")
 
     variants = make_drafts(idx, style, opt, use_llm)
+    if use_llm and idx.story_summary and not (job / "story.json").exists():
+        (job / "story.json").write_text(json.dumps({
+            "summary": idx.story_summary,
+            "characters": {c.id: {"name": c.name} for c in idx.characters if c.name},
+            "beats": [b.model_dump() for b in idx.story],
+        }, ensure_ascii=False, indent=1), encoding="utf-8")
     summaries = []
     for vi, parts in enumerate(variants):
         for pi, draft in enumerate(parts):

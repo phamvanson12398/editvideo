@@ -319,7 +319,8 @@ def separate_stems(wav_stereo: str | Path, out_dir: str | Path) -> dict[str, str
     log("Tách thoại khỏi nhạc nền bằng Demucs (có thể mất vài phút)...")
     tmp = out_dir / "demucs"
     cmd = [sys.executable, "-m", "demucs", "--two-stems=vocals", "-n", "htdemucs", "--segment", "7", "-o", str(tmp), str(wav_stereo)]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if proc.returncode != 0:
         warn(f"Demucs lỗi, bỏ qua tách nhạc: {proc.stderr[-500:]}")
         return {}

@@ -34,7 +34,7 @@ def ensure_installed() -> None:
         if not npm:
             raise RemotionError("Không tìm thấy npm. Cài Node.js 18+.")
         log("Cài thư viện Remotion lần đầu (npm install)...")
-        proc = subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=REMOTION_DIR, capture_output=True, text=True)
+        proc = subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=REMOTION_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0:
             raise RemotionError(f"npm install lỗi:\n{proc.stderr[-2000:]}")
 

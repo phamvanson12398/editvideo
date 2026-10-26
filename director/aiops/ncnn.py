@@ -65,7 +65,7 @@ def upscale(src: Path, dst: Path, scale: int = 2, fps: float = 30.0) -> bool:
         n = _frames(src, t / "in")
         log(f"Nâng nét {n} khung bằng Real-ESRGAN (GPU)...")
         proc = subprocess.run([exe, "-i", str(t / "in"), "-o", str(t / "out"), "-n", "realesr-animevideov3", "-s", str(scale), "-f", "png"],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0:
             warn(f"Real-ESRGAN lỗi: {proc.stderr[-400:]}")
             return False
@@ -85,7 +85,7 @@ def interpolate(src: Path, dst: Path, factor: float, fps: float) -> bool:
         log(f"Slow motion RIFE: {n} -> {target} khung (GPU)...")
         (t / "out").mkdir()
         proc = subprocess.run([exe, "-i", str(t / "in"), "-o", str(t / "out"), "-n", str(target), "-f", "%08d.png"],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0:
             warn(f"RIFE lỗi: {proc.stderr[-400:]}")
             return False

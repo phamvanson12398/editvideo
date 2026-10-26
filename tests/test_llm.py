@@ -173,3 +173,20 @@ def test_gemini_adapter(monkeypatch):
     assert [c.role for c in contents] == ["user", "model", "user"]
     assert contents[0].parts[1].inline_data.mime_type == "image/jpeg"
     assert config.response_mime_type == "application/json" and config.system_instruction == "sys"
+
+
+def test_one_call_plans_and_understands_story(monkeypatch, idx):
+    """Planning and story understanding happen in a single AI call (faster)."""
+    reply = {"story": {"summary": "Mẹ phát hiện bí mật", "characters": {"C0": {"name": "Ji Eun"}}},
+             "parts": [good_draft(idx)]}
+    fake = FakeClaude([json.dumps(reply)])
+    monkeypatch.setattr(llm, "_call", fake)
+    monkeypatch.setattr("director.agent.director.keyframe_blocks", lambda *a, **k: [])
+    from director.perception.schema import Character
+
+    idx.characters = [Character(id="C0")]
+    idx.story_summary = ""
+    style = parse_style("drama dọc 9:16", idx.genre)
+    drafts = plan_with_llm(idx, style, "drama dọc 9:16")
+    assert len(fake.calls) == 1 and len(drafts) == 1
+    assert idx.story_summary == "Mẹ phát hiện bí mật" and idx.characters[0].name == "Ji Eun"
