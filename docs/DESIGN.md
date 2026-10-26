@@ -249,7 +249,7 @@ Ba loại hiệu ứng:
 
 - **remotion**: phụ đề động, tiêu đề, sticker, progress bar, khung, emoji, chuyển cảnh đồ hoạ.
 - **ffmpeg**: cắt, ghép, reframe, LUT, tốc độ, ổn định hình (vidstab), khử ồn, loudnorm.
-- **ai**: tách nền, xoá vật thể, nâng nét, slow motion, khử ồn bằng AI.
+- **ai**: tách nền, nâng nét, slow motion, khử ồn bằng AI.
 
 Thêm hiệu ứng mới chỉ cần thêm plugin, không phải sửa agent.
 
@@ -294,7 +294,23 @@ Kèm theo là các **kiểm tra tự động không cần AI**: phụ đề vư�
 
 ## 4. Thể loại ưu tiên: hoạt hình drama
 
-Video của bạn đa thể loại nhưng chủ yếu là **hoạt hình kiểu drama**. Hoạt hình khác video người thật ở nhiều điểm, nên Director có **hồ sơ thể loại** (genre profile): mỗi thể loại một bộ công cụ phân tích, một bộ hiệu ứng ưu tiên và một Style DNA mặc định.
+Video của bạn đa thể loại nhưng chủ yếu là **hoạt hình kiểu drama do chính bạn sản xuất**. Nhiệm vụ của tool là **làm video gốc hay hơn**, không xoá, che hay thay đổi nội dung bạn đã làm, chỉ thêm vào (phụ đề, hiệu ứng, tiếng động, nhạc, nhịp dựng). Hoạt hình khác video người thật ở nhiều điểm, nên Director có **hồ sơ thể loại** (genre profile): mỗi thể loại một bộ công cụ phân tích, một bộ hiệu ứng ưu tiên và một Style DNA mặc định.
+
+### 4.0 Lợi thế khi là người sản xuất: tài liệu gốc
+
+Vì video do bạn làm, bạn có thể đưa thêm tài liệu sản xuất (đều tuỳ chọn). Có càng nhiều thì tool càng ít phải đoán và kết quả càng chính xác:
+
+| Tài liệu | Tool dùng để | Nếu không có |
+|---|---|---|
+| **Kịch bản / lời thoại** (txt, docx, srt) | Phụ đề đúng 100%, biết ai nói câu nào, biết ý đồ từng cảnh | Whisper chép lời + đoán người nói |
+| **Danh sách nhân vật** (tên, ảnh nhân vật) | Nhận diện nhân vật ngay từ đầu, màu phụ đề theo nhân vật | Tự gom nhóm, bạn đặt tên sau |
+| **Âm thanh tách riêng** (thoại, nhạc nền, tiếng động) | Mix lại chuẩn: chỉnh to nhỏ từng lớp, đổi nhạc theo cảm xúc | Demucs tự tách (kém sạch hơn) |
+| **Video không chữ** (bản trước khi chèn chữ) | Tự do đặt phụ đề và hiệu ứng | Né vùng chữ có sẵn |
+| **Video có độ phân giải gốc cao** | Reframe sang khung dọc vẫn nét | Nâng nét bằng Real-ESRGAN anime khi cần |
+
+Lệnh ví dụ: `director edit tap12.mp4 --script tap12.srt --characters nhanvat/ --style "drama dọc 9:16, hook bằng cú twist"`
+
+Tool cũng **ghi nhớ theo bộ phim**: nhân vật, màu phụ đề, phong cách đã chọn được lưu lại, tập sau chỉ cần đưa video vào là dựng đồng bộ với các tập trước.
 
 ### 4.1 Tự nhận thể loại
 
@@ -308,8 +324,7 @@ Bước đầu tiên của Perception: lấy khoảng 20 keyframe, phân loại 
 | **Biết ai là ai** | Nhận diện khuôn mặt người không dùng được | Cắt ảnh nhân vật → SigLIP embedding → gom cụm thành "nhân vật A, B, C". Bạn đặt tên một lần, tool nhớ cho cả bộ phim |
 | **Ai đang nói** | Hoạt hình không có khẩu hình rõ ràng | pyannote tách giọng theo người nói, rồi ghép giọng với nhân vật hay xuất hiện trên hình cùng lúc. Bạn sửa được nếu sai |
 | **Lời thoại lẫn nhạc** | Whisper nghe sai khi nhạc nền to và nhiều tiếng động | **Demucs tách thoại ra trước**, sau đó mới chạy Whisper. Nhạc nền gốc được giữ riêng để mix lại |
-| **Chữ cứng trên hình** (phụ đề gốc, chữ Trung/Nhật/Hàn) | Phụ đề mới đè lên phụ đề cũ, rất rối | PaddleOCR tìm vùng chữ. Tuỳ lệnh: giữ, che bằng khối mờ/màu, **xoá bằng AI** (LaMa/ProPainter), hoặc cắt khung tránh vùng chữ. Chữ đọc được còn dùng làm transcript khi không nghe được |
-| **Ngôn ngữ gốc khác** | | LLM dịch lời thoại (theo ngữ cảnh cả tập, giữ đúng tên và cách xưng hô nhân vật) → phụ đề tiếng Việt hoặc ngôn ngữ bạn chọn |
+| **Chữ có sẵn trên hình** (tên nhân vật, chữ minh hoạ bạn đã làm) | Phụ đề và hiệu ứng mới đè lên, rất rối | PaddleOCR tìm vùng chữ có sẵn để **né**, không đặt phụ đề/sticker đè lên và không cắt khung làm mất chữ. Tool không xoá hay che gì trên video gốc |
 | **Hoạt hình giữ khung** (một hình lặp nhiều frame) | Dò chuyển cảnh báo sai; RIFE tạo hình méo khi nội suy | Chỉnh ngưỡng dò cảnh cho hoạt hình, nhận biết frame lặp bằng perceptual hash. **Tắt RIFE mặc định**; làm chậm bằng giữ hình / zoom chậm thay vì nội suy |
 | **Cảm xúc** | Model cảm xúc khuôn mặt người không chạy trên hình vẽ | Kết hợp giọng nói (cao độ, âm lượng, khóc/hét), cảm xúc nhạc nền gốc, nội dung lời thoại và VLM mô tả cảnh |
 | **Nâng nét** | Model cho ảnh thật làm hình vẽ bị bết | Real-ESRGAN bản **realesr-animevideov3**: nhẹ, nhanh, giữ nét vẽ |
@@ -357,7 +372,7 @@ Phụ đề drama có màu theo nhân vật (mỗi nhân vật một màu, giữ
 
 | Chế độ | Lệnh ví dụ | Kết quả |
 |---|---|---|
-| **Cắt lại** | "Cắt tập này thành short 60 giây, mở bằng cú tát" | Dùng thoại gốc, phụ đề dịch, hiệu ứng drama |
+| **Cắt lại** | "Cắt tập này thành short 60 giây, mở bằng cú tát" | Dùng thoại gốc, thêm phụ đề, hiệu ứng drama |
 | **Kể lại có lời bình** | "Làm video tóm tắt có giọng đọc kể chuyện" | LLM viết lời kể theo bản đồ câu chuyện → giọng đọc TTS → cảnh khớp với từng câu, thoại gốc giảm nhỏ hoặc chèn xen kẽ ở đoạn đắt |
 | **Hỗn hợp** | "Kể tóm tắt, đến đoạn cãi nhau thì để thoại gốc" | Hai chế độ trên đan xen |
 
@@ -373,8 +388,7 @@ Phụ đề drama có màu theo nhân vật (mỗi nhân vật một màu, giữ
   "transitions": { "default": "hard-cut", "accent": ["flash-white", "fade-black"] },
   "color":       { "per_emotion": { "sad": "desaturate", "anger": "red-tint", "villain": "dark" } },
   "audio":       { "keep_original_bgm": true, "bgm_by_emotion": true, "sfx_pack": "drama" },
-  "hardsubs":    "remove",          // keep | cover | remove | crop
-  "translate_to": "vi"
+  "existing_text": "avoid"        // né chữ có sẵn trên hình, không xoá
 }
 ```
 
@@ -398,13 +412,11 @@ GTX 1080 dùng kiến trúc Pascal (compute 6.1). Những điều cần biết:
 | Nhận diện nhân vật | SigLIP embedding + gom cụm | Local | Nhẹ |
 | Tách thoại khỏi nhạc nền | Demucs | Local | Chạy trước Whisper cho hoạt hình |
 | Ai đang nói | pyannote (diarization) | Local | Khoảng 2–3 GB |
-| Đọc chữ cứng trên hình | PaddleOCR | Local | Nhẹ |
-| Xoá chữ cứng | LaMa (từng khung) / ProPainter (mượt theo thời gian) | Local | LaMa nhanh; ProPainter chỉ cho vùng nhỏ |
+| Tìm chữ có sẵn trên hình (để né) | PaddleOCR | Local | Nhẹ |
 | Embedding hình | SigLIP base | Local | Nhẹ |
 | Chuyển cảnh | TransNetV2 | Local | Nhẹ |
 | Tách nền người | RobustVideoMatting | Local | Chạy tốt ở 1080p |
 | Phân đoạn vật thể | SAM 2 (tiny/small) | Local | Bản large dễ hết VRAM |
-| Xoá vật thể | ProPainter | Local, giới hạn | Xử lý vùng cắt ở 720p, đoạn ngắn |
 | Nâng nét | Real-ESRGAN; bản **realesr-animevideov3** cho hoạt hình | Local | Bản anime nhẹ và nhanh hơn nhiều |
 | Slow motion | RIFE (Practical-RIFE) | Local | Chạy tốt với người thật; tắt mặc định với hoạt hình (xem mục 4) |
 | Khử ồn | DeepFilterNet | Local | Chạy được cả trên CPU |
@@ -453,11 +465,11 @@ editvideo/
 | Mốc | Nội dung | Xong khi |
 |---|---|---|
 | **M1: Nền móng** | Schema Edit Plan, CLI, Perception cơ bản (whisper, silence, scene), render ffmpeg + Remotion phụ đề, ghép lớp | `director edit in.mp4 --style "cắt im lặng, phụ đề to"` ra MP4 đúng |
-| **M2: Hoạt hình drama** | Hồ sơ thể loại hoạt hình drama (mục 4): tách thoại khỏi nhạc, dò mặt và nhận diện nhân vật hoạt hình, xử lý chữ cứng, bộ hiệu ứng drama. Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo nhân vật, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Một tập hoạt hình drama ra được short có hook, phụ đề, hiệu ứng và tiếng động, đăng được |
+| **M2: Hoạt hình drama** | Hồ sơ thể loại hoạt hình drama (mục 4): tách thoại khỏi nhạc, dò mặt và nhận diện nhân vật hoạt hình, né chữ có sẵn, bộ hiệu ứng drama. Khung hình linh hoạt theo lệnh (mọi tỉ lệ, nhiều khung một lúc), reframe theo nhân vật, punch-in theo nhấn giọng, LUT, khử ồn, nhạc + ducking, SFX, cắt từ đệm và retake | Một tập hoạt hình drama ra được short có hook, phụ đề, hiệu ứng và tiếng động, đăng được |
 | **M3: Bộ não** | Director Agent dùng tool, Style DNA từ câu chữ, Effect Registry | Mô tả tự do → kế hoạch dựng hợp lý |
 | **M4: Tự sửa** | Bản nháp nhanh, Critic Loop, render theo cache | Điểm Critic tăng sau mỗi vòng |
 | **M5: Studio** | Web UI, sửa bằng chat, nhiều phương án, xuất OTIO | Dùng hằng ngày không cần dòng lệnh |
-| **M6: Đi trước** | Style DNA từ video mẫu, bộ nhớ sở thích, B-roll tự động, AI ops (tách nền, xoá vật thể, slow motion), điểm giữ chân | "Edit giống video này" cho ra kết quả nhận ra được phong cách |
+| **M6: Đi trước** | Style DNA từ video mẫu, bộ nhớ sở thích, B-roll tự động, AI ops (tách nền, nâng nét, slow motion), điểm giữ chân | "Edit giống video này" cho ra kết quả nhận ra được phong cách |
 
 ---
 
@@ -466,6 +478,5 @@ editvideo/
 - **Giấy phép Remotion:** miễn phí cho cá nhân và công ty tối đa 3 người, lớn hơn cần mua license. Vì Remotion chỉ nằm ở lớp phủ, có thể thay bằng Revideo nếu cần.
 - **Bản quyền nhạc và B-roll:** chỉ dùng nguồn có giấy phép rõ ràng (Pexels, Pixabay, YouTube Audio Library, thư viện tự mua). Lưu nguồn của mọi asset vào Edit Plan.
 - **Giọng nói nhân bản / sửa lời bằng AI** (nếu thêm sau này): chỉ dùng với giọng của chính bạn hoặc người đã đồng ý.
-- **Bản quyền phim hoạt hình:** phần lớn phim hoạt hình có chủ sở hữu. Tool chỉ là công cụ dựng; việc đăng lại nội dung của người khác có thể bị Content ID hoặc khiếu nại bản quyền. Nên dùng nội dung bạn có quyền, hoặc làm review/bình luận có giá trị biến đổi thật sự và tìm hiểu chính sách của nền tảng. Tool không có tính năng lách cơ chế phát hiện bản quyền.
 - **Chi phí API:** Critic Loop tốn nhất. Có giới hạn vòng, cache, và chế độ "tiết kiệm".
 - **8 GB VRAM:** một số model AI nặng phải chạy ở độ phân giải thấp hoặc theo đoạn. Chừa sẵn tuỳ chọn chuyển sang cloud GPU (Replicate, fal.ai) cho từng hiệu ứng.
