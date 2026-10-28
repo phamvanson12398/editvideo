@@ -135,6 +135,7 @@ Kết quả nằm trong `outputs/`: `<tên>_<khung>.mp4`, `<tên>.edl`, `<tên>.
 ### Ví dụ lệnh phong cách
 
 - `drama dọc 9:16, hook bằng cú twist, 60 giây` → hook là câu twist, tua VHS về đầu, nén còn 60 giây
+- `hook 4-6 giây` → đổi độ dài hook (mặc định 3–5 giây, luôn dừng sau trọn một từ). Chỗ hook nhảy về truyện mặc định **không có tiếng động**; muốn có thì ghi `giữ tiếng động sau hook`
 - `chia 3 phần, mỗi phần kết bằng cliffhanger` → 3 video, có "Còn tiếp..."
 - `tối giản, màu ấm, không tiếng động` → chỉ cắt gọn và chỉnh màu
 - `nhiều hiệu ứng, phụ đề karaoke vàng, thanh tiến trình` → mật độ hiệu ứng cao

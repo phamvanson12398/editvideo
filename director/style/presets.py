@@ -13,7 +13,7 @@ _PRESETS: dict[str, dict] = {
         "description": "Hoạt hình drama: hook bằng cú twist, phụ đề màu theo nhân vật, combo hiệu ứng theo cảm xúc",
         "genre": "anime",
         "pacing": {"avg_shot_sec": 2.2, "remove_silence_over": 0.5, "slow_down_on": ["sad"], "cut_on_beat": False},
-        "hook": {"enabled": True, "max_sec": 3.0, "strategy": "twist-first-then-rewind"},
+        "hook": {"enabled": True, "min_sec": 3.0, "max_sec": 5.0, "strategy": "twist-first-then-rewind"},
         "captions": {"preset": "color_by_character", "color_by_character": True, "emotion_styles": True,
                      "words_per_line": 5, "weight": 800, "if_hardsub": "none"},
         "camera": {"reframe": "auto", "punch_in_on": ["shock", "anger"], "shake_on": ["shock", "anger"]},
@@ -27,7 +27,7 @@ _PRESETS: dict[str, dict] = {
     "tiktok-nang-dong": {
         "description": "TikTok năng động: cắt nhanh, từng từ bật lên, zoom theo nhấn giọng",
         "pacing": {"avg_shot_sec": 1.6, "remove_silence_over": 0.25, "keep_pause": 0.08, "cut_on_beat": True},
-        "hook": {"strategy": "best-moment-first", "max_sec": 2.5},
+        "hook": {"strategy": "best-moment-first", "min_sec": 3.0, "max_sec": 5.0},
         "captions": {"preset": "word_pop", "words_per_line": 3, "weight": 900, "uppercase": False, "emoji": True},
         "camera": {"punch_in_on_emphasis": True, "zoom_range": [1.0, 1.35]},
         "transitions": {"accent": ["whip_pan", "zoom_blur", "zoom_in_out"], "frequency": "medium"},

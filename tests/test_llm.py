@@ -85,8 +85,10 @@ def test_revise_offline_drop_timestamp(idx):
 
     d = plan_rules(idx, style)[0]
     plan = compile_plan(d, idx, style, parse_frames(["9:16"], 1280, 720))
-    t = plan.clips[2].start + 0.1
-    mm, ss = divmod(int(t), 60)
+    import math
+
+    c = next(c for c in plan.clips if c.role == "main" and math.ceil(c.start) < c.start + c.duration)
+    mm, ss = divmod(math.ceil(c.start), 60)
     draft, _ = revise_draft(plan, idx, style, f"bỏ đoạn {mm}:{ss:02d}", use_llm=False)
     assert len(draft.clips) == len(d.clips) - 1
 

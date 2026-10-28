@@ -145,6 +145,14 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
         patch["hook"] = {"enabled": True, "strategy": "twist-first-then-rewind"}
     elif _has(text, "câu hỏi", "gợi tò mò"):
         patch["hook"] = {"enabled": True, "strategy": "question"}
+    # "hook 3-5s", "hook 4 giây", "hook dài 6 giây"
+    m = re.search(r"hook[^0-9,.;]{0,10}(\d{1,2}(?:[.,]\d)?)\s*(?:-|–|đến|tới)\s*(\d{1,2}(?:[.,]\d)?)\s*(?:s|giây)", text.lower())
+    m1 = m or re.search(r"hook[^0-9,.;]{0,10}(\d{1,2}(?:[.,]\d)?)\s*(?:s|giây)", text.lower())
+    if m1 and not _has(text, "không hook", "no hook", "không cần hook"):
+        lo = float(m1.group(1).replace(",", "."))
+        hi = float(m.group(2).replace(",", ".")) if m else lo + 0.5
+        lo, hi = max(1.0, min(lo, hi)), min(15.0, max(lo, hi))
+        patch.setdefault("hook", {"enabled": True}).update({"min_sec": lo, "max_sec": hi})
 
     # ---- captions
     cap: dict = {}
@@ -204,7 +212,11 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
             break
     if _has(text, "nhạc theo cảm xúc", "đổi nhạc theo cảnh"):
         au["bgm_by_emotion"] = True
-    if _has(text, "không tiếng động", "không sfx", "no sfx"):
+    after_hook = _has(text, "tiếng động sau hook", "âm thanh sau hook", "sfx sau hook")
+    if after_hook:
+        au["sfx_after_hook"] = not _has(text, "bỏ tiếng động sau hook", "bỏ âm thanh sau hook", "không tiếng động sau hook",
+                                        "không âm thanh sau hook", "bỏ sfx sau hook", "không sfx sau hook")
+    if _has(re.sub(r"(?:tiếng động|âm thanh|sfx) sau hook", "", text.lower()), "không tiếng động", "không sfx", "no sfx"):
         au["sfx"] = False
     if _has(text, "bỏ nhạc gốc", "tắt nhạc gốc"):
         au["keep_original_bgm"] = False

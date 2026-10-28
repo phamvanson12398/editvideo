@@ -207,7 +207,7 @@ USER COMMAND: {command!r}
 {('VARIANT: make this the "' + variant + '" version (chuẩn = balanced, mạnh tay = bold/many effects, an toàn = restrained).') if variant else ''}
 USER TASTE (recent requests, newest first): {prefs or 'none'}
 ON-SCREEN TEXT LANGUAGE: {i18n.name(i18n.resolve(style.text_language, idx.language))} ({i18n.resolve(style.text_language, idx.language)}). Spoken language: {idx.language}.
-TARGET DURATION: {style.target_duration or 'as needed'} s; PARTS: {style.parts}; HOOK: {style.hook.strategy}.
+TARGET DURATION: {style.target_duration or 'as needed'} s; PARTS: {style.parts}; HOOK: {style.hook.strategy}, hook clip {style.hook.min_sec:g}-{style.hook.max_sec:g} s long, ending after a complete word; no SFX on the jump from the hook back into the story.
 CAPTIONS: burned-in subtitles present = {idx.hardsub.present} -> follow captions.if_hardsub = {style.captions.if_hardsub}.
 
 An automatic baseline plan (valid, rule-based) is below. Improve it like a top editor: better hook, smarter cuts at

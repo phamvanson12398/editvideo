@@ -19,7 +19,8 @@ class Pacing(BaseModel):
 
 class Hook(BaseModel):
     enabled: bool = True
-    max_sec: float = 3.0
+    min_sec: float = 3.0  # hook length range (seconds)
+    max_sec: float = 5.0
     strategy: str = "best-moment-first"  # best-moment-first | twist-first-then-rewind | question | none
 
 
@@ -74,6 +75,7 @@ class AudioStyle(BaseModel):
     sfx_pack: str = "drama"
     loudness_lufs: float = -14.0
     music_drop_on_shock: bool = True
+    sfx_after_hook: bool = False  # sound effect at the hook -> story jump (rewind tape etc.); off = quiet jump
     sfx_volume: float = 50.0  # % loudness of sound effects (0 = off, 100 = full, up to 200)
     music_volume: float = 100.0  # % loudness of added background music
     bgm_volume: float = 100.0  # % loudness of the video's own music (when separated)

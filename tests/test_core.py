@@ -183,3 +183,29 @@ def test_text_cards_do_not_overlap():
     assert ("character_card", 10.0) in ids and ("lower_third", 10.2) not in ids
     assert ("lower_third", 20.0) not in ids  # same name again within 30 s
     assert ("title_slam", 10.5) in ids and ("shake", 10.0) in ids
+
+
+def test_hook_length_and_quiet_jump(tmp_path: Path):
+    idx = make_index()
+    style = parse_style("drama dọc 9:16, hook bằng cú twist", idx.genre)
+    d = plan_rules(idx, style)[0]
+    d.clips[0].src_out = d.clips[0].src_in + 1.0  # too short (AI plans can do this too)
+    plan = compile_plan(d, idx, style, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
+    hook = plan.clips[0]
+    assert hook.role == "hook" and 3.0 <= hook.duration <= 5.0
+    word_ends = [w.t1 for s in idx.sentences for w in s.words] + [s.t1 for s in idx.sentences]
+    assert any(abs(hook.src_out - 0.15 - t) < 1e-3 for t in word_ends)  # ends after a word, not mid-word
+    jump = hook.start + hook.duration
+    assert not [s for s in plan.audio.sfx if jump - 0.4 <= s.start <= jump + 2.5]
+    assert any(e.id == "vhs" for e in plan.effects)  # the rewind picture is kept, only its sound is gone
+
+    loud = parse_style("drama dọc 9:16, hook bằng cú twist, giữ tiếng động sau hook", idx.genre)
+    assert loud.audio.sfx_after_hook and loud.audio.sfx
+    plan2 = compile_plan(plan_rules(idx, loud)[0], idx, loud, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
+    assert any(s.id == "rewind_tape" for s in plan2.audio.sfx)
+
+
+def test_hook_length_from_command():
+    st = parse_style("drama, hook 4-6 giây, không tiếng động sau hook")
+    assert (st.hook.min_sec, st.hook.max_sec) == (4.0, 6.0)
+    assert st.audio.sfx and not st.audio.sfx_after_hook

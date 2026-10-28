@@ -440,6 +440,54 @@ AUDIO_FX = {"echo", "reverb", "muffled", "radio", "phone", "pitch_up", "pitch_do
 # ---------------------------------------------------------------- main
 
 
+def _hook_end(idx: VideoIndex, a: float, b: float, mn: float, mx: float) -> float:
+    """End of a hook clip starting at a, kept between mn and mx seconds and ending after a word (not mid-word)."""
+    D = idx.source.duration
+    mx = min(mx, D - a)
+    mn = min(mn, mx)
+    if mn <= b - a <= mx:
+        return b
+    sent_ends = [s.t1 for s in idx.sentences if a + mn <= s.t1 <= a + mx]
+    word_ends = [w.t1 for s in idx.sentences for w in s.words if a + mn <= w.t1 <= a + mx]
+    if b - a > mx:  # too long: cut at the last word that still fits
+        ends = word_ends or sent_ends
+        t = max(ends) if ends else a + mx
+    else:  # too short: finish the sentence if it fits, else the next word
+        t = min(sent_ends) if sent_ends else (min(word_ends) if word_ends else a + mn)
+    return min(D, a + mx, t + 0.15) if t < a + mx else a + mx
+
+
+def fit_hooks(draft: PlanDraft, idx: VideoIndex, style: StyleDNA) -> None:
+    """Hook clips last style.hook.min_sec..max_sec; effects/SFX pinned to the old hook end move with it."""
+    h = style.hook
+    for i, c in enumerate(draft.clips):
+        if c.role != "hook" or c.freeze is not None or c.reverse:
+            continue
+        new = round(_hook_end(idx, c.src_in, c.src_out, h.min_sec, h.max_sec), 3)
+        old = c.src_out
+        if abs(new - old) < 1e-3:
+            continue
+        c.src_out = new
+        for e in [*draft.effects, *draft.sfx]:
+            if e.clip == i and e.at >= old - 0.3:
+                e.at = round(min(new - 0.01, e.at + new - old), 3)
+            elif e.clip == i and e.at >= new:
+                e.at = round(max(c.src_in, new - 0.3), 3)
+
+
+def _hook_jump(clips: list[Clip]) -> tuple[float, float] | None:
+    """Timeline window of the hook -> story jump (end of the hook, its rewind, the start of the story)."""
+    hook_end = end = None
+    for c in clips:
+        if c.role == "hook":
+            hook_end = end = c.start + c.duration
+        elif end is not None and c.role in ("rewind", "reverse"):
+            end = c.start + c.duration
+        elif end is not None:
+            break
+    return (hook_end - 0.4, end + 1.5) if end is not None else None
+
+
 def compile_plan(
     draft: PlanDraft,
     idx: VideoIndex,
@@ -454,6 +502,9 @@ def compile_plan(
     lang = i18n.resolve(style.text_language, idx.language)
     chars = {c.id: {"name": draft.character_names.get(c.id) or c.name or i18n.t("character", lang, n=i + 1), "color": c.color}
              for i, c in enumerate(idx.characters)}
+
+    draft = draft.model_copy(deep=True)
+    fit_hooks(draft, idx, style)
 
     # sanitize clips
     wclips: list[WClip] = []
@@ -687,6 +738,9 @@ def compile_plan(
             continue
         dedup.append(s)
     audio.sfx = dedup
+    jump = None if au.sfx_after_hook else _hook_jump(clips)
+    if jump:  # no loud sting/whoosh/rewind tape where the hook jumps back into the story
+        audio.sfx = [s for s in audio.sfx if not jump[0] <= s.start <= jump[1]]
 
     hs = idx.hardsub
     return EditPlan(
