@@ -267,7 +267,7 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
     res.summary = "\n".join(summaries)
     (job / "last_job.json").write_text(json.dumps({"video": str(video.resolve()), "command": opt.command,
                                                     "outputs": [str(p) for p in res.outputs],
-                                                    "plans": [str(p) for p in res.plans]}, ensure_ascii=False, indent=2))
+                                                    "plans": [str(p) for p in res.plans]}, ensure_ascii=False, indent=2), encoding="utf-8")
     return res
 
 

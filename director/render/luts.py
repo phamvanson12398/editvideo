@@ -99,7 +99,7 @@ def write_cube(name: str, fn, path: Path) -> Path:
     rgb = np.clip(fn(_grid()), 0, 1).reshape(-1, 3)
     lines = [f'TITLE "{name}"', f"LUT_3D_SIZE {SIZE}", "DOMAIN_MIN 0 0 0", "DOMAIN_MAX 1 1 1"]
     lines += [f"{r:.6f} {g:.6f} {b:.6f}" for r, g, b in rgb]
-    path.write_text("\n".join(lines) + "\n")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
 
 

@@ -103,7 +103,7 @@ def test_plan_and_compile(tmp_path: Path):
     assert any(e.id == "vhs" for e in plan.effects)  # hook rewind
     assert all(Path(s.file).exists() for s in plan.audio.sfx)
     edl = export_edl(plan, tmp_path / "x.edl")
-    assert "FCM: NON-DROP FRAME" in edl.read_text()
+    assert "FCM: NON-DROP FRAME" in edl.read_text(encoding="utf-8")
 
 
 def test_compile_follow_without_hardsub(tmp_path: Path):

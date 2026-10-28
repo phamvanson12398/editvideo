@@ -93,7 +93,7 @@ def prepare_clips(plan: EditPlan, public_dir: Path, *, draft: bool = False, work
         key = hashlib.sha1(json.dumps([plan.source, start, read, filters, draft, use_rife, upscale, need_bg]).encode()).hexdigest()[:16]
         target = out_dir / f"{clip.id}.mp4"
         stamp = out_dir / f"{clip.id}.key"
-        if target.exists() and stamp.exists() and stamp.read_text() == key:
+        if target.exists() and stamp.exists() and stamp.read_text(encoding="utf-8") == key:
             return
         args = ["-ss", f"{start:.3f}", "-t", f"{read:.3f}", "-i", plan.source, "-an", "-vf", ",".join(filters)]
         args += video_codec_args("draft" if draft else "intermediate") + ["-g", "15", "-movflags", "+faststart", str(target)]
@@ -111,7 +111,7 @@ def prepare_clips(plan: EditPlan, public_dir: Path, *, draft: bool = False, work
             tmp = out_dir / f"{clip.id}_up.mp4"
             if ncnn_upscale(target, tmp, 2, fps):
                 tmp.replace(target)
-        stamp.write_text(key)
+        stamp.write_text(key, encoding="utf-8")
 
     log(f"Chuẩn bị {len(plan.clips)} đoạn video{' (bản nháp)' if draft else ''}...")
     pool_map(work, plan.clips, workers)

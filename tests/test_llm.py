@@ -110,7 +110,7 @@ def test_provider_selection(monkeypatch, tmp_path):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
     assert llm.provider() is None  # API providers only when chosen explicitly
     fake = tmp_path / "agy"
-    fake.write_text("#!/bin/sh\n")
+    fake.write_text("#!/bin/sh\n", encoding="utf-8")
     fake.chmod(0o755)
     assert llm.provider() == "antigravity"
     monkeypatch.setenv("DIRECTOR_LLM", "claude")
@@ -131,7 +131,7 @@ def test_antigravity_cli_roundtrip(monkeypatch, tmp_path):
         "print(json.dumps({'conversation_id': 'c1', 'status': 'SUCCESS', 'response': json.dumps({'ok': ok})}))\n",
         encoding="utf-8")
     runner = tmp_path / "agy"
-    runner.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n')
+    runner.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8")
     runner.chmod(0o755)
     monkeypatch.setenv("AGY_BIN", str(runner))
     monkeypatch.setenv("DIRECTOR_HOME", str(tmp_path / "home"))

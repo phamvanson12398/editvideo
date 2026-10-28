@@ -77,9 +77,9 @@ def main() -> None:
         o.width //= 2
         o.height //= 2
     plan = compile_plan(draft, idx, style, outputs)
-    (out / "showcase.plan.json").write_text(plan.model_dump_json(indent=1))
+    (out / "showcase.plan.json").write_text(plan.model_dump_json(indent=1), encoding="utf-8")
     index = [{"t": round(c.start, 2), "effect": ids[i]} for i, c in enumerate(plan.clips) if i < len(ids)]
-    (out / "showcase_index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1))
+    (out / "showcase_index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
     pub = out / "job" / "render"
     prepare_clips(plan, pub, draft=True)
     vid = render_output(plan, outputs[0].id, pub, out / "showcase_video.mp4", draft=False)
