@@ -32,33 +32,16 @@ class Job:
 JOBS: dict[str, Job] = {}
 
 
-def _parallel_slots() -> int:
-    from ..pipeline import load_config
-
-    try:
-        return max(1, min(8, int(load_config().get("so_viec_song_song", 2))))
-    except (TypeError, ValueError):
-        return 2
+_one_at_a_time = threading.Lock()  # one video at a time; later jobs wait in line ("queued")
 
 
-_slots = threading.Semaphore(_parallel_slots())  # how many videos are processed at the same time
-_key_locks: dict[str, threading.Lock] = {}
-_key_guard = threading.Lock()
-
-
-def _key_lock(key: str) -> threading.Lock:
-    """Jobs on the SAME video share files (analysis, clips): they run one after another."""
-    with _key_guard:
-        return _key_locks.setdefault(key, threading.Lock())
-
-
-def _run(job: Job, fn, key: str) -> None:
+def _run(job: Job, fn) -> None:
     def listener(line: str) -> None:
         job.logs.append(line)
 
     L.add_listener(listener)  # context-local: this thread (and its workers) only
     L.set_tag(f"[{job.id}]")
-    with _key_lock(key), _slots:
+    with _one_at_a_time:
         job.status = "running"
         try:
             res = fn()
@@ -79,7 +62,7 @@ def create_app(out_dir: Path):
     from fastapi.staticfiles import StaticFiles
 
     from ..effects.catalog import to_json
-    from ..pipeline import JobOptions, job_dir_for, revise_job, run_job
+    from ..pipeline import JobOptions, revise_job, run_job
     from ..style.presets import list_presets
 
     out_dir = out_dir.resolve()
@@ -124,19 +107,19 @@ def create_app(out_dir: Path):
     @app.post("/api/edit")
     def edit(video: str = Form(...), command: str = Form(""), frames: str = Form(""), preset: str = Form(""),
              variants: int = Form(1), use_llm: str = Form("auto"), draft: bool = Form(False), critic: int = Form(-1),
-             text_lang: str = Form("auto"), fast: bool = Form(False),
+             text_lang: str = Form("auto"),
              sfx_volume: float = Form(-1), music_volume: float = Form(-1)):
         if not Path(video).exists():
             raise HTTPException(404, "không thấy video")
         opt = JobOptions(
             command=command, frames=[f.strip() for f in frames.split(",") if f.strip()] or None, preset=preset or None,
-            out_dir=out_dir, draft=draft, variants=max(1, min(3, variants)), critic_rounds=None if critic < 0 else critic, fast=fast,
+            out_dir=out_dir, draft=draft, variants=max(1, min(3, variants)), critic_rounds=None if critic < 0 else critic,
             sfx_volume=None if sfx_volume < 0 else sfx_volume, music_volume=None if music_volume < 0 else music_volume,
             use_llm={"on": True, "off": False}.get(use_llm), text_language=None if text_lang == "auto" else text_lang,
         )
         job = Job(id=uuid.uuid4().hex[:8], kind="edit", params={"video": video, "command": command})
         JOBS[job.id] = job
-        threading.Thread(target=_run, args=(job, lambda: run_job(video, opt), str(job_dir_for(Path(video), out_dir).resolve())), daemon=True).start()
+        threading.Thread(target=_run, args=(job, lambda: run_job(video, opt)), daemon=True).start()
         return {"job": job.id}
 
     @app.post("/api/revise")
@@ -146,7 +129,7 @@ def create_app(out_dir: Path):
         opt = JobOptions(out_dir=out_dir, draft=draft, use_llm={"on": True, "off": False}.get(use_llm))
         job = Job(id=uuid.uuid4().hex[:8], kind="revise", params={"plan": plan, "instruction": instruction})
         JOBS[job.id] = job
-        threading.Thread(target=_run, args=(job, lambda: revise_job(plan, instruction, opt), str(Path(plan).resolve().parent)), daemon=True).start()
+        threading.Thread(target=_run, args=(job, lambda: revise_job(plan, instruction, opt)), daemon=True).start()
         return {"job": job.id}
 
     @app.post("/api/choose")

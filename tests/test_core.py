@@ -209,3 +209,14 @@ def test_hook_length_from_command():
     st = parse_style("drama, hook 4-6 giây, không tiếng động sau hook")
     assert (st.hook.min_sec, st.hook.max_sec) == (4.0, 6.0)
     assert st.audio.sfx and not st.audio.sfx_after_hook
+
+
+def test_outputs_are_always_2k():
+    from director.plan.frames import to_2k
+
+    outs = to_2k(parse_frames(["9:16", "16:9", "4:5", "1080x1350"], 1280, 720))
+    assert [(o.width, o.height) for o in outs][:3] == [(1440, 2560), (2560, 1440), (1440, 1800)]
+    assert all(min(o.width, o.height) == 1440 and o.width % 2 == 0 and o.height % 2 == 0 for o in outs)
+    assert to_2k(parse_frames(["9:16 4k"], 1280, 720))[0].width == 2160  # 4K asked explicitly stays 4K
+    src = to_2k(parse_frames(None, 1280, 720))[0]  # source frame too
+    assert (src.width, src.height) == (2560, 1440)

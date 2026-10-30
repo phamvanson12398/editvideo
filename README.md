@@ -42,7 +42,7 @@ Không có AI, tool vẫn chạy đầy đủ bằng bộ lập kế hoạch off
 | `3_SUA_BAN_DUNG.bat` | Sửa bản dựng gần nhất bằng lời (hoặc kéo thả một file `*.plan.json` vào để sửa bản đó) |
 | `4_STUDIO.bat` | Mở giao diện web trên trình duyệt |
 | `5_CAI_THEM_GPU.bat` | Cài PyTorch CUDA 12.6 (hợp GTX 10xx), Demucs và thư viện CUDA cho Whisper chạy bằng GPU |
-| `7_CAU_HINH.bat` | Mở file cấu hình: âm lượng tiếng động/nhạc, ngôn ngữ chữ, dựng nhanh 720p |
+| `7_CAU_HINH.bat` | Mở file cấu hình: âm lượng tiếng động/nhạc, ngôn ngữ chữ |
 | `6_CAI_ANTIGRAVITY.bat` | Cài Antigravity CLI (`agy`) và đăng nhập tài khoản Google để tool dùng AI lập kế hoạch và tự xem lại bản nháp (không cần API key) |
 
 Trước khi chạy `1_CAI_DAT.bat`, máy cần có sẵn Python 3.11, Node.js LTS và ffmpeg (xem mục dưới).
@@ -124,7 +124,6 @@ Hãy tự kiểm tra điều khoản sử dụng của Google cho việc gọi `
 | `--draft` | Bản nháp nhanh để xem trước |
 | `--critic 1` | Số vòng tự xem lại và sửa (cần AI). Mặc định: 1 vòng nếu video ≤ 3 phút, video dài hơn thì bỏ qua cho nhanh |
 | `--text-lang ko` | Ngôn ngữ chữ tool chèn thêm (tiêu đề, "còn tiếp", nhãn...): `vi`, `ko`, `en`, `ja`, `zh`. Mặc định theo tiếng trong video (video tiếng Hàn → chữ tiếng Hàn) |
-| `--nhanh` | Xuất 720p, dựng nhanh gần gấp đôi |
 | `--genre anime` | Ghi đè thể loại nếu tool nhận sai |
 | `--upscale` | Nâng nét x2 bằng Real-ESRGAN |
 | `--no-llm` | Không dùng AI |
@@ -157,16 +156,16 @@ Tiếng động mặc định ở mức **50%** (nhỏ hơn bản trước kho�
 - Video **đã có sub sẵn** thì mặc định tool **không thêm phụ đề** nữa (kể cả chữ nhấn to ở giữa màn hình). Muốn thêm thì ghi trong lệnh: "thêm phụ đề dù đã có sub".
 - Tool chỉ đọc sub trên hình (OCR) khi không chép được lời; chỉ tách thoại/nhạc (Demucs) khi có GPU CUDA cho PyTorch (`5_CAI_THEM_GPU.bat`).
 - Whisper chạy theo lô trên GPU (nhanh hơn nhiều lần). Remotion dùng hết số nhân CPU (đổi bằng biến `DIRECTOR_CONCURRENCY`).
-- `--nhanh` (hoặc tích "Dựng nhanh 720p" trong Studio) xuất 720p.
 - Log in ra thời gian từng bước ("Phân tích xong", "Dựng ... mất ...s") để biết chậm ở đâu.
 
-### Dựng song song nhiều video
+### Chất lượng xuất
 
-- Mở Studio (`4_STUDIO.bat`), mở thêm tab trình duyệt cùng địa chỉ, mỗi tab chọn một video rồi bấm dựng. Mục "Tất cả các việc" hiện mọi việc đang chạy/đang chờ; bấm vào một việc để xem tiến độ của nó.
-- Mặc định chạy **2 việc cùng lúc**, việc thứ 3 trở đi xếp hàng. Đổi bằng `so_viec_song_song` trong `cau_hinh.json` (1–8), khởi động lại Studio để áp dụng.
-- Hai việc trên **cùng một video** (cùng thư mục job) sẽ tự chạy lần lượt để không ghi đè file của nhau.
-- Các bước dùng GPU (Whisper, Demucs, nhận diện người nói) **chạy lần lượt** giữa các việc, kể cả khi mở nhiều cửa sổ `2_DUNG_VIDEO.bat`, để GTX 1080 không hết bộ nhớ. Remotion chia đều số nhân CPU cho các bản đang dựng.
-- Nhanh nhất khi một việc đang chờ AI (Antigravity) thì việc kia đang dựng/xuất hình.
+- Luôn xuất **2K**, giữ đúng tỉ lệ khung: dọc 9:16 là **1440x2560**, ngang 16:9 là **2560x1440**, 4:5 là 1440x1800, vuông 1440x1440. Ghi "4k" trong khung hình thì xuất 4K.
+- H.264 CRF 17, âm thanh AAC 192k, chuẩn âm lượng -14 LUFS.
+
+### Hàng đợi
+
+Studio làm **lần lượt từng video**. Bấm dựng thêm video khác trong lúc đang chạy thì việc đó vào hàng chờ; mục "Tất cả các việc" hiện việc nào đang chạy, việc nào đang chờ.
 
 ### Sửa bằng lời
 

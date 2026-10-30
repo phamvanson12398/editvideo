@@ -87,8 +87,8 @@ button.primary:disabled { opacity: .5; cursor: default; }
     <input type="range" id="sfx" min="0" max="150" step="5" value="50" style="width:100%">
     <label>Âm lượng nhạc nền thêm vào: <b id="musV">100</b>%</label>
     <input type="range" id="mus" min="0" max="150" step="5" value="100" style="width:100%">
-    <label><input type="checkbox" id="fast"> Dựng nhanh 720p (nhanh gần gấp đôi)</label>
-    <label><input type="checkbox" id="draft"> Chỉ dựng bản nháp nhanh</label>
+    <p class="muted">Video luôn xuất 2K (dọc 1440x2560, ngang 2560x1440).</p>
+    <label><input type="checkbox" id="draft"> Chỉ dựng bản nháp xem thử (độ nét thấp, không phải bản cuối)</label>
     <button class="primary" id="go" disabled>Dựng video</button>
     <p class="muted" id="hint">Chọn video để bắt đầu.</p>
   </section>
@@ -98,7 +98,7 @@ button.primary:disabled { opacity: .5; cursor: default; }
     <div class="log" id="log">Chưa có việc nào.</div>
     <div class="summary" id="summary"></div>
     <div class="outputs" id="outputs"></div>
-    <h2 style="margin-top:22px">Tất cả các việc <span class="muted">(chạy song song; bấm để xem)</span></h2>
+    <h2 style="margin-top:22px">Tất cả các việc <span class="muted">(làm lần lượt từng video; bấm để xem)</span></h2>
     <div id="jobs" class="muted">Chưa có việc nào.</div>
   </section>
 </main>
@@ -115,7 +115,6 @@ for (const [id, out] of [['sfx', 'sfxV'], ['mus', 'musV']]) $('#' + id).oninput 
 fetch('/api/config').then(r => r.json()).then(c => {
   if (c.am_luong_tieng_dong != null) { $('#sfx').value = c.am_luong_tieng_dong; $('#sfxV').textContent = c.am_luong_tieng_dong; }
   if (c.am_luong_nhac_them != null) { $('#mus').value = c.am_luong_nhac_them; $('#musV').textContent = c.am_luong_nhac_them; }
-  if (c.dung_nhanh_720p) $('#fast').checked = true;
   if (c.ngon_ngu_chu && c.ngon_ngu_chu !== 'auto') $('#textLang').value = c.ngon_ngu_chu;
 });
 document.querySelectorAll('#frames .chip').forEach(c => c.onclick = () => c.classList.toggle('on'));
@@ -145,7 +144,7 @@ $('#go').onclick = async () => {
   const fd = new FormData();
   fd.append('video', videoPath); fd.append('command', $('#command').value); fd.append('frames', frames());
   fd.append('preset', $('#preset').value); fd.append('variants', $('#variants').value); fd.append('use_llm', $('#llm').value);
-  fd.append('critic', $('#critic').value); fd.append('text_lang', $('#textLang').value); fd.append('fast', $('#fast').checked); fd.append('sfx_volume', $('#sfx').value); fd.append('music_volume', $('#mus').value); fd.append('draft', $('#draft').checked);
+  fd.append('critic', $('#critic').value); fd.append('text_lang', $('#textLang').value); fd.append('sfx_volume', $('#sfx').value); fd.append('music_volume', $('#mus').value); fd.append('draft', $('#draft').checked);
   const r = await fetch('/api/edit', {method: 'POST', body: fd});
   const j = await r.json(); watch(j.job);
 };

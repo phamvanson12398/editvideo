@@ -1,9 +1,7 @@
 {
-  "_huong_dan": "Cấu hình mặc định của Director. Sửa số rồi lưu file. Âm lượng tính theo %: 0 = tắt, 100 = bình thường, tối đa 200. Lệnh phong cách (vd 'tiếng động 30%') và tuỳ chọn dòng lệnh sẽ ghi đè các giá trị này. so_viec_song_song: số video Studio xử lý cùng lúc (2-3 hợp với máy 8 nhân + GTX 1080).",
+  "_huong_dan": "Cấu hình mặc định của Director. Sửa số rồi lưu file. Âm lượng tính theo %: 0 = tắt, 100 = bình thường, tối đa 200. Lệnh phong cách (vd 'tiếng động 30%') và tuỳ chọn dòng lệnh sẽ ghi đè các giá trị này.",
   "am_luong_tieng_dong": 50,
   "am_luong_nhac_them": 100,
   "am_luong_nhac_goc": 100,
-  "ngon_ngu_chu": "auto",
-  "dung_nhanh_720p": false,
-  "so_viec_song_song": 2
+  "ngon_ngu_chu": "auto"
 }

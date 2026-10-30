@@ -92,6 +92,19 @@ def parse_frame(req: str, source_w: int, source_h: int) -> OutputSpec:
     raise ValueError(f"Không hiểu yêu cầu khung hình: {req!r}")
 
 
+QHD_SHORT = 1440  # "2K": 2560x1440 / 1440x2560
+
+
+def to_2k(outputs: list[OutputSpec]) -> list[OutputSpec]:
+    """Every output is rendered in 2K (short side 1440), same aspect; bigger requests (4K) stay as asked."""
+    for o in outputs:
+        short = min(o.width, o.height)
+        if short < QHD_SHORT:
+            k = QHD_SHORT / short
+            o.width, o.height = _even(o.width * k), _even(o.height * k)
+    return outputs
+
+
 def parse_frames(reqs: list[str] | None, source_w: int, source_h: int) -> list[OutputSpec]:
     if not reqs:
         return [parse_frame("source", source_w, source_h)]

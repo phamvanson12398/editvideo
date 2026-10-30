@@ -15,7 +15,7 @@ from .agent.planner_rules import plan_rules
 from .perception.analyze import analyze
 from .perception.schema import VideoIndex
 from .plan.compiler import compile_plan, summarize
-from .plan.frames import parse_frames
+from .plan.frames import parse_frames, to_2k
 from .plan.schema import EditPlan, PlanDraft
 from .render.audio_mix import build_soundtrack
 from .render.prep import prepare_clips
@@ -35,7 +35,6 @@ class JobOptions:
     draft: bool = False
     use_llm: bool | None = None  # None = auto (when an API key is configured)
     critic_rounds: int | None = None  # None = auto: 1 round for outputs up to 3 minutes, 0 for longer
-    fast: bool = False  # 720p output: roughly twice as fast to render
     sfx_volume: float | None = None  # % (None = cau_hinh.json / style default 50)
     music_volume: float | None = None
     bgm_volume: float | None = None
@@ -105,8 +104,6 @@ def apply_config(opt: JobOptions) -> None:
         opt.bgm_volume = float(cfg["am_luong_nhac_goc"])
     if not opt.text_language and cfg.get("ngon_ngu_chu") not in (None, "", "auto"):
         opt.text_language = str(cfg["ngon_ngu_chu"])
-    if not opt.fast and cfg.get("dung_nhanh_720p"):
-        opt.fast = True
 
 
 def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
@@ -209,11 +206,7 @@ def run_job(video: str | Path, opt: JobOptions) -> JobResult:
             warn(f"LLM phân tích câu chuyện lỗi, dùng phân tích offline: {e}")
     style = resolve_style(idx, opt, use_llm)
     (job / "style.json").write_text(style.model_dump_json(indent=2), encoding="utf-8")
-    outputs = parse_frames(style.frames, idx.source.width, idx.source.height)
-    if opt.fast:
-        for o in outputs:
-            k = min(1.0, 1280 / max(o.width, o.height))
-            o.width, o.height = int(o.width * k) // 2 * 2, int(o.height * k) // 2 * 2
+    outputs = to_2k(parse_frames(style.frames, idx.source.width, idx.source.height))
     log(f"[{time.time() - t_start:.0f}s] Phân tích xong.")
     log(f"Phong cách: {style.name} | khung: {', '.join(o.id for o in outputs)} | AI: {provider_label() if use_llm else 'tắt (offline)'}")
 
@@ -281,7 +274,7 @@ def revise_job(plan_path: str | Path, instruction: str, opt: JobOptions) -> JobR
     from .agent.director import revise_draft
 
     draft, style = revise_draft(plan, idx, style, instruction, use_llm=llm_enabled(opt))
-    outputs = parse_frames(style.frames, idx.source.width, idx.source.height)
+    outputs = to_2k(parse_frames(style.frames, idx.source.width, idx.source.height))
     new_plan = compile_plan(draft, idx, style, outputs)
     new_plan.version = plan.version + 1
     name = plan_path.name.replace(".plan.json", "")
