@@ -1,6 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Sequence, useVideoConfig} from 'remotion';
 import {Captions} from './captions/Captions';
+import {HeaderBandView} from './overlays/Header';
 import {LayoutUI} from './overlays/LayoutUI';
 import {MangaOverlays} from './overlays/Manga';
 import {ParticleOverlays} from './overlays/Particles';
@@ -27,13 +28,12 @@ const ChromaDefs: React.FC = () => (
 );
 
 export const Main: React.FC<MainProps> = ({plan, outputId}) => {
-  const {fps} = useVideoConfig();
+  const {fps, width: W, height: H} = useVideoConfig();
   const out = plan.outputs.find((o) => o.id === outputId) ?? plan.outputs[0];
   const oid = out?.id ?? outputId;
   const overlaps = plan.effects.filter((e) => e.category === 'overlap');
-  return (
-    <AbsoluteFill style={{background: '#000'}}>
-      <ChromaDefs />
+  const content = (
+    <>
       {plan.clips.map((clip, i) => {
         const from = Math.round((clip.start - clip.handle_pre) * fps);
         const dur = Math.max(1, Math.round((clip.duration + clip.handle_pre + clip.handle_post) * fps));
@@ -52,6 +52,30 @@ export const Main: React.FC<MainProps> = ({plan, outputId}) => {
       <TxOverlays plan={plan} />
       <Captions plan={plan} outputId={oid} />
       <TextOverlays plan={plan} outputId={oid} />
+    </>
+  );
+  const header = plan.header;
+  if (header) {
+    // Title band on top; everything else lives in the area below it (its own width/height for the layers inside).
+    const bandH = Math.round(H * header.height);
+    const areaH = H - bandH;
+    return (
+      <AbsoluteFill style={{background: '#000'}}>
+        <ChromaDefs />
+        <div style={{position: 'absolute', left: 0, top: bandH, width: W, height: areaH, overflow: 'hidden'}}>
+          <Sequence width={W} height={areaH} layout="none">
+            {content}
+          </Sequence>
+        </div>
+        <HeaderBandView header={header} />
+        <LayoutUI plan={plan} outputId={oid} />
+      </AbsoluteFill>
+    );
+  }
+  return (
+    <AbsoluteFill style={{background: '#000'}}>
+      <ChromaDefs />
+      {content}
       <LayoutUI plan={plan} outputId={oid} />
     </AbsoluteFill>
   );

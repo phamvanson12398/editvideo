@@ -2,6 +2,7 @@ import React from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {anchorAt} from '../lib/anchor';
 import {useFontFamily} from '../lib/fonts';
+import {breakJapanese} from '../lib/jbreak';
 import {backOut, clamp, easeOut, hexToRgba, noise} from '../lib/math';
 import {clipAt, mapPoint} from '../lib/view';
 import type {CaptionLine, CaptionTrack, EditPlan} from '../types';
@@ -39,6 +40,26 @@ export const Captions: React.FC<Props> = ({plan, outputId}) => {
   if (!line) return null;
 
   const u = Math.min(W, H);
+  const safe0 = plan.safe_zones[outputId] ?? {top: 0.05, bottom: 0.1, left: 0.05, right: 0.05};
+  if (track.preset === '2ch') {
+    // 2ch / スカッと: the whole sentence at the top-left, white with a thick black outline, no word animation.
+    const cjk = line.words.some((w) => /[\u2e80-\u9fff\uac00-\ud7af\uff00-\uffef]/.test(w.text));
+    const text = line.words.map((w) => w.text.trim()).join(cjk ? '' : ' ');
+    const fs = W * 0.085 * (track.size || 1);
+    const left = W * Math.max(0.05, safe0.left);
+    const room = W - left - W * Math.max(0.05, safe0.right);
+    const shown = cjk ? breakJapanese(text, Math.max(4, Math.floor(room / (fs * 1.02)))).join('\n') : text;
+    return (
+      <AbsoluteFill style={{pointerEvents: 'none'}}>
+        <div style={{position: 'absolute', left, top: H * safe0.top, maxWidth: room, whiteSpace: cjk ? 'pre' : 'normal',
+          fontFamily: font, fontWeight: track.weight || 900, fontSize: fs, lineHeight: 1.18, color: line.color || track.color || '#fff', textAlign: 'left',
+          lineBreak: 'strict', overflowWrap: 'anywhere', textShadow: strokeShadow(Math.max(3, fs * 0.11), track.stroke || '#000'),
+          opacity: clamp((t - line.t0) / 0.06)}}>
+          {shown}
+        </div>
+      </AbsoluteFill>
+    );
+  }
   const vertical = H > W * 1.2;
   const safe = plan.safe_zones[outputId] ?? {top: 0.05, bottom: 0.1, left: 0.05, right: 0.05};
   const emphasisOnly = track.mode === 'emphasis-only';

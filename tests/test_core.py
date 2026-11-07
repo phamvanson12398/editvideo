@@ -220,3 +220,29 @@ def test_outputs_are_always_2k():
     assert to_2k(parse_frames(["9:16 4k"], 1280, 720))[0].width == 2160  # 4K asked explicitly stays 4K
     src = to_2k(parse_frames(None, 1280, 720))[0]  # source frame too
     assert (src.width, src.height) == (2560, 1440)
+
+
+def test_2ch_style(tmp_path: Path):
+    st = parse_style("kiểu 2ch, series: スカッと迷言集, tiêu đề: お宝写真")
+    assert st.name == "2ch" and st.header.enabled
+    assert (st.header.series, st.header.title) == ("スカッと迷言集", "お宝写真")
+    assert st.captions.preset == "2ch" and not st.hook.enabled
+    assert parse_style("スカッと系のショート").name == "2ch"  # Japanese keywords match without spaces
+    idx = make_index()
+    d = plan_rules(idx, st)[0]
+    from director.agent.planner_rules import DraftEffect
+
+    d.effects.append(DraftEffect(id="title_slam", clip=0, at=d.clips[0].src_in, dur=1.5, params={"text": "X"}))
+    outs = to_2k_frames(st)
+    plan = compile_plan(d, idx, st, outs, cache=tmp_path)
+    assert plan.header and plan.header.series == "スカッと迷言集" and plan.header.title == "お宝写真"
+    assert not any(e.id == "title_slam" for e in plan.effects)  # the title lives in the band, not a card
+    assert plan.safe_zones[outs[0].id].top < 0.05
+    plain = compile_plan(plan_rules(idx, parse_style("drama dọc 9:16"))[0], idx, parse_style("drama dọc 9:16"), outs, cache=tmp_path)
+    assert plain.header is None
+
+
+def to_2k_frames(style):
+    from director.plan.frames import to_2k
+
+    return to_2k(parse_frames(style.frames, 1280, 720))

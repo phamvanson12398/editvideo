@@ -76,6 +76,15 @@ export type CaptionTrack = {
 
 export type SafeZone = {top: number; bottom: number; left: number; right: number};
 
+export type HeaderBand = {
+  series: string;
+  title: string;
+  height: number; // fraction of the frame height
+  color: string;
+  bg: string;
+  font: string;
+};
+
 export type EditPlan = {
   version: number;
   source: string;
@@ -91,6 +100,7 @@ export type EditPlan = {
   characters: Record<string, {name: string; color?: string | null}>;
   genre: string;
   style_name: string;
+  header?: HeaderBand | null;
 };
 
 export type MainProps = {

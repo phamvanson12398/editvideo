@@ -158,6 +158,19 @@ Tiếng động mặc định ở mức **50%** (nhỏ hơn bản trước kho�
 - Whisper chạy theo lô trên GPU (nhanh hơn nhiều lần). Remotion dùng hết số nhân CPU (đổi bằng biến `DIRECTOR_CONCURRENCY`).
 - Log in ra thời gian từng bước ("Phân tích xong", "Dựng ... mất ...s") để biết chậm ở đâu.
 
+### Kiểu 2ch / スカッと (shorts Nhật)
+
+Ghi `kiểu 2ch` (hoặc `2ch`, `スカッと`) trong lệnh phong cách:
+
+```
+kiểu 2ch, series: スカッと迷言集, tiêu đề: お宝写真
+```
+
+- Khung dọc 9:16 (2K). Trên cùng là **dải đen có tiêu đề chữ đỏ viền trắng**: dòng to là `series`, dòng dưới là `tiêu đề` của tập. Video chạy ở phần bên dưới dải, không che gì của hình gốc.
+- Không ghi `tiêu đề` thì AI tự đặt tên tập ngắn; tắt AI thì lấy câu thoại đầu. Tên series dùng cho mọi video: điền `tieu_de_series_2ch` trong `cau_hinh.json` (`7_CAU_HINH.bat`).
+- **Phụ đề trắng viền đen, nguyên câu, ở góc trên bên trái**, tự xuống dòng đúng chỗ tiếng Nhật (sau trợ từ, không tách giữa từ). Video đã có sub sẵn thì không thêm phụ đề.
+- Không hook, cắt thẳng, ít hiệu ứng, không thẻ tiêu đề chồng lên hình. Font tiếng Nhật đi kèm tool (Rounded M+, giấy phép OFL).
+
 ### Chất lượng xuất
 
 - Luôn xuất **2K**, giữ đúng tỉ lệ khung: dọc 9:16 là **1440x2560**, ngang 16:9 là **2560x1440**, 4:5 là 1440x1800, vuông 1440x1440. Ghi "4k" trong khung hình thì xuất 4K.

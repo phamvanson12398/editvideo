@@ -98,6 +98,17 @@ class Extras(BaseModel):
     title: Optional[str] = None  # explicit title text for the hook card
 
 
+class Header(BaseModel):
+    """Fixed title band at the top of the frame (2ch / スカッと shorts): the video plays below it."""
+    enabled: bool = False
+    series: Optional[str] = None  # big first line, e.g. the channel's series name
+    title: Optional[str] = None  # second line: this episode's title (None = AI / auto)
+    height: float = 0.2  # fraction of the frame height
+    color: str = "#E8141B"
+    bg: str = "#000000"
+    font: str = "Rounded Mplus 1c"
+
+
 class StyleDNA(BaseModel):
     name: str = "default"
     description: str = ""
@@ -111,6 +122,7 @@ class StyleDNA(BaseModel):
     audio: AudioStyle = Field(default_factory=AudioStyle)
     budget: EffectBudget = Field(default_factory=EffectBudget)
     extras: Extras = Field(default_factory=Extras)
+    header: Header = Field(default_factory=Header)
     preferred_effects: list[str] = Field(default_factory=list)
     banned_effects: list[str] = Field(default_factory=list)
     target_duration: Optional[float] = None  # seconds

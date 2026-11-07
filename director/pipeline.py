@@ -38,6 +38,7 @@ class JobOptions:
     sfx_volume: float | None = None  # % (None = cau_hinh.json / style default 50)
     music_volume: float | None = None
     bgm_volume: float | None = None
+    header_series: str | None = None  # first line of the 2ch title band (cau_hinh.json: tieu_de_series_2ch)
     variants: int = 1
     genre: str | None = None
     whisper_model: str | None = None
@@ -102,6 +103,8 @@ def apply_config(opt: JobOptions) -> None:
         opt.music_volume = float(cfg["am_luong_nhac_them"])
     if opt.bgm_volume is None and "am_luong_nhac_goc" in cfg:
         opt.bgm_volume = float(cfg["am_luong_nhac_goc"])
+    if not opt.header_series and str(cfg.get("tieu_de_series_2ch") or "").strip():
+        opt.header_series = str(cfg["tieu_de_series_2ch"]).strip()
     if not opt.text_language and cfg.get("ngon_ngu_chu") not in (None, "", "auto"):
         opt.text_language = str(cfg["ngon_ngu_chu"])
 
@@ -134,6 +137,8 @@ def resolve_style(idx: VideoIndex, opt: JobOptions, use_llm: bool) -> StyleDNA:
         style.audio.music_volume = opt.music_volume
     if opt.bgm_volume is not None:
         style.audio.bgm_volume = opt.bgm_volume
+    if style.header.enabled and not style.header.series and opt.header_series:
+        style.header.series = opt.header_series
     if opt.remember:
         from .memory.store import apply_series_memory
 

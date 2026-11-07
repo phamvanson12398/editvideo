@@ -59,8 +59,10 @@ def render_output(plan: EditPlan, output_id: str, public_dir: Path, out_file: Pa
                   concurrency: int | None = None) -> Path:
     ensure_installed()
     fonts = public_dir / "fonts"
-    if not fonts.exists():
-        shutil.copytree(ROOT / "assets" / "fonts", fonts)
+    fonts.mkdir(parents=True, exist_ok=True)
+    for f in (ROOT / "assets" / "fonts").iterdir():  # new fonts also reach render folders made by older versions
+        if not (fonts / f.name).exists():
+            shutil.copy2(f, fonts / f.name)
     props = public_dir / f"props_{output_id}.json"
     data = plan.model_dump(exclude={"draft"})
     props.write_text(json.dumps({"plan": data, "outputId": output_id}, ensure_ascii=False), encoding="utf-8")

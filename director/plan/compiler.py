@@ -14,7 +14,7 @@ from ..perception.schema import VideoIndex
 from ..render.sfx_synth import sfx_file
 from ..style.dna import StyleDNA
 from ..utils.log import warn
-from .frames import safe_zone
+from .frames import _even, safe_zone
 from .schema import (
     AudioClipFx,
     AudioPlan,
@@ -25,10 +25,12 @@ from .schema import (
     ClipReframe,
     EditPlan,
     Effect,
+    HeaderBand,
     MusicCue,
     OutputSpec,
     PlanDraft,
     ReframeKey,
+    SafeZone,
     SfxCue,
     VolumeEvent,
 )
@@ -488,6 +490,32 @@ def _hook_jump(clips: list[Clip]) -> tuple[float, float] | None:
     return (hook_end - 0.4, end + 1.5) if end is not None else None
 
 
+def content_spec(out: OutputSpec, header: HeaderBand | None) -> OutputSpec:
+    """The area the video plays in: the whole frame, or the part below the header band."""
+    if header is None:
+        return out
+    return out.model_copy(update={"height": _even(out.height * (1 - header.height))})
+
+
+def content_safe_zone(out: OutputSpec, header: HeaderBand | None) -> SafeZone:
+    if header is None:
+        return safe_zone(out)
+    sz = safe_zone(out)  # platform buttons (bottom / right) still sit over the video area
+    k = 1 / (1 - header.height)
+    return SafeZone(top=0.03, bottom=min(0.3, sz.bottom * k), left=max(0.04, sz.left), right=sz.right)
+
+
+def make_header(idx: VideoIndex, style: StyleDNA, draft: PlanDraft) -> HeaderBand | None:
+    h = style.header
+    if not h.enabled:
+        return None
+    title = (h.title or draft.title or style.extras.title or "").strip()
+    if not title and not h.series and idx.sentences:  # nothing given: the first line of dialogue, kept short
+        first = re.split(r"[。！？!?.,、，]", idx.sentences[0].text.strip())[0]
+        title = first[:12]
+    return HeaderBand(series=(h.series or "").strip(), title=title, height=min(0.3, max(0.1, h.height)), color=h.color, bg=h.bg, font=h.font)
+
+
 def compile_plan(
     draft: PlanDraft,
     idx: VideoIndex,
@@ -673,10 +701,14 @@ def compile_plan(
 
     out_effects.sort(key=lambda e: e.start)
 
+    header = make_header(idx, style, draft)
+    if style.banned_effects:  # also for AI plans and structural effects
+        out_effects = [e for e in out_effects if e.id not in style.banned_effects]
+
     # ---- reframe + faces per clip
     for cl, wc in zip(clips, wclips):
         for out in outputs:
-            cl.reframe[out.id] = decide_reframe(idx, style, wc, out)
+            cl.reframe[out.id] = decide_reframe(idx, style, wc, content_spec(out, header))
         faces = []
         if idx.faces:
             tt = wc.src_in if wc.freeze is None else wc.freeze
@@ -749,7 +781,7 @@ def compile_plan(
         source_fps=idx.source.fps,
         duration=total,
         outputs=outputs,
-        safe_zones={o.id: safe_zone(o) for o in outputs},
+        safe_zones={o.id: content_safe_zone(o, header) for o in outputs},
         clips=clips,
         effects=out_effects,
         captions=captions,
@@ -764,6 +796,7 @@ def compile_plan(
         style_name=style.name,
         notes=draft.notes,
         draft=draft,
+        header=header,
     )
 
 

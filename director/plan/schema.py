@@ -227,6 +227,16 @@ class SafeZone(BaseModel):
     right: float = 0.0
 
 
+class HeaderBand(BaseModel):
+    """Title band fixed at the top; the video, captions and overlays live in the area below it."""
+    series: str = ""
+    title: str = ""
+    height: float = 0.2  # fraction of the frame height
+    color: str = "#E8141B"
+    bg: str = "#000000"
+    font: str = "Rounded Mplus 1c"
+
+
 class EditPlan(BaseModel):
     version: int = 1
     source: str
@@ -249,3 +259,4 @@ class EditPlan(BaseModel):
     style_name: str = ""
     notes: str = ""
     draft: Optional[PlanDraft] = None
+    header: Optional[HeaderBand] = None

@@ -1,7 +1,7 @@
 import {continueRender, delayRender, staticFile} from 'remotion';
 
 // Fonts are bundled (assets/fonts, SIL OFL) and copied into the render's public dir as fonts/*.
-// No network needed at render time. All of them include Vietnamese glyphs.
+// No network needed at render time. All of them include Vietnamese glyphs; Rounded Mplus 1c also covers Japanese.
 type Face = {file: string; weight: string};
 const FAMILIES: Record<string, Face[]> = {
   'Be Vietnam Pro': [
@@ -15,6 +15,8 @@ const FAMILIES: Record<string, Face[]> = {
   Lexend: [{file: 'Lexend-Variable.ttf', weight: '100 900'}],
   'Baloo 2': [{file: 'Baloo2-Variable.ttf', weight: '400 800'}],
   Roboto: [{file: 'Roboto-Variable.ttf', weight: '100 900'}],
+  // Japanese (kana + kanji) and Vietnamese: 2ch style titles and captions
+  'Rounded Mplus 1c': [{file: 'MPLUSRounded1c-Black.ttf', weight: '100 900'}],
 };
 
 const loaded = new Set<string>();

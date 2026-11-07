@@ -23,6 +23,10 @@ def _has(text: str, *keys: str) -> bool:
     low = text.lower()
     plain = _plain(text)
     for k in keys:
+        if any(ord(c) >= 0x2E80 for c in k):  # Japanese / Chinese / Korean: no word boundaries
+            if k in text:
+                return True
+            continue
         if _plain(k) != k.lower():
             if re.search(rf"(?<!\w){re.escape(k.lower())}(?!\w)", low):
                 return True
@@ -32,6 +36,7 @@ def _has(text: str, *keys: str) -> bool:
 
 
 PRESET_KEYS = [
+    ("2ch", ("2ch", "2channel", "2 ch", "kiểu 2ch", "2ちゃん", "2ちゃんねる", "スカッと", "kiểu nhật", "kieu nhat")),
     ("toi-gian", ("tối giản", "đơn giản", "minimal", "nhẹ nhàng thôi")),
     ("dien-anh", ("điện ảnh", "cinematic", "kiểu phim")),
     ("hai-huoc", ("hài hước", "hài", "funny", "comedy", "vui nhộn")),
@@ -83,6 +88,14 @@ MUSIC_KEYS = [
     ("romance", ("nhạc lãng mạn", "nhạc tình cảm")),
     ("comedy", ("nhạc hài", "nhạc vui nhộn")),
 ]
+
+
+def _labelled(text: str, keys: str) -> str | None:
+    """'tiêu đề: お宝写真' / 'title "X"' / 'タイトル「X」' -> the text (up to a comma or the end of the line)."""
+    m = re.search(rf"(?:{keys})\s*(?:là\s*)?(?:[:：]\s*)?[\"“「『]([^\"”」』\n]+)[\"”」』]", text, re.IGNORECASE)
+    if not m:
+        m = re.search(rf"(?:{keys})\s*(?:là\s*)?[:：]\s*([^,;，\n]+)", text, re.IGNORECASE)
+    return m.group(1).strip() if m else None
 
 
 def choose_preset(text: str, genre: str) -> StyleDNA:
@@ -255,9 +268,17 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
     m = re.search(r"tập\s*(\d+)", text.lower())
     if m:
         ex["episode_badge"] = f"Tập {m.group(1)}"
-    m = re.search(r"(?:tiêu đề|tên video|title)\s*[:\"“]\s*([^\"”\n]+)", text, re.IGNORECASE)
-    if m:
-        ex["title"] = m.group(1).strip()
+    title = _labelled(text, r"tiêu đề|tên video|title|タイトル")
+    if title:
+        ex["title"] = title
+        patch.setdefault("header", {})["title"] = title
+    series = _labelled(text, r"series|tên series|tên kênh|dòng trên|シリーズ")
+    if series:
+        patch.setdefault("header", {})["series"] = series
+    if _has(text, "dải tiêu đề", "khung tiêu đề trên", "header"):
+        patch.setdefault("header", {})["enabled"] = True
+    if _has(text, "không dải tiêu đề", "bỏ dải tiêu đề", "không header"):
+        patch.setdefault("header", {})["enabled"] = False
     if _has(text, "giới thiệu nhân vật", "thẻ nhân vật"):
         ex["character_cards"] = True
     if ex:
