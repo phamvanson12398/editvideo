@@ -14,6 +14,7 @@ class Pacing(BaseModel):
     cut_on_beat: bool = False
     remove_fillers: bool = True
     remove_retakes: bool = True
+    keep_all: bool = True  # keep the WHOLE source (no cutting, no speed-up); off only when asked to shorten
     slow_down_on: list[str] = Field(default_factory=list)  # emotions that get slowed down
 
 

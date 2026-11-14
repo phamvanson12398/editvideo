@@ -89,8 +89,9 @@ def test_revise_offline_drop_timestamp(idx):
 
     c = next(c for c in plan.clips if c.role == "main" and math.ceil(c.start) < c.start + c.duration)
     mm, ss = divmod(math.ceil(c.start), 60)
-    draft, _ = revise_draft(plan, idx, style, f"bỏ đoạn {mm}:{ss:02d}", use_llm=False)
-    assert len(draft.clips) == len(d.clips) - 1
+    draft, st = revise_draft(plan, idx, style, f"bỏ đoạn {mm}:{ss:02d}", use_llm=False)
+    assert len(draft.clips) == len(plan.draft.clips) - 1
+    assert not st.pacing.keep_all  # asked to remove a part: the rest is no longer refilled
 
 
 def test_apply_story(idx):

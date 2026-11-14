@@ -23,6 +23,7 @@ from .schema import (
     CaptionWord,
     Clip,
     ClipReframe,
+    DraftClip,
     EditPlan,
     Effect,
     HeaderBand,
@@ -490,6 +491,68 @@ def _hook_jump(clips: list[Clip]) -> tuple[float, float] | None:
     return (hook_end - 0.4, end + 1.5) if end is not None else None
 
 
+SHORTENING = {"timelapse", "speed_ramp", "jump_cut"}
+
+
+def cover_source(draft: PlanDraft, idx: VideoIndex, style: StyleDNA) -> None:
+    """keep_all: the output contains the whole source, nothing cut and nothing sped up.
+    The plan's cut points stay as boundaries between contiguous clips; hook clips (an extra replay up front) stay;
+    effects / SFX / transitions / music are moved to the clip that now holds their moment."""
+    D = idx.source.duration
+    old = draft.clips
+    hooks = [i for i, c in enumerate(old) if c.role == "hook"]
+    mains = [i for i, c in enumerate(old) if c.role != "hook" and c.freeze is None and c.src_out - c.src_in > 0.05]
+    if D <= 0:
+        return
+    if style.parts > 1 and mains:  # one part of a split video: fill the gaps inside its own range
+        lo, hi = min(old[i].src_in for i in mains), max(old[i].src_out for i in mains)
+    else:
+        lo, hi = 0.0, D
+    cuts = sorted({round(old[i].src_in, 3) for i in mains if lo + 0.3 < old[i].src_in < hi - 0.3})
+    bounds = [lo, *cuts, hi]
+    segs = [(a, b) for a, b in zip(bounds, bounds[1:]) if b - a > 0.05]
+
+    def hint(a: float) -> DraftClip | None:
+        return next((old[i] for i in mains if old[i].src_in - 1e-3 <= a < old[i].src_out), None)
+
+    new = [old[i].model_copy(update={"speed": min(1.0, old[i].speed)}) for i in hooks]
+    hook_map = {o: n for n, o in enumerate(hooks)}
+    for a, b in segs:
+        h = hint(a)
+        new.append(DraftClip(src_in=round(a, 3), src_out=round(b, 3), speed=min(1.0, h.speed) if h else 1.0,
+                             reframe=h.reframe if h else None, note=h.note if h else ""))
+
+    def at_seg(t: float) -> int:
+        for k, (a, b) in enumerate(segs):
+            if a - 1e-3 <= t < b:
+                return len(hooks) + k
+        return len(hooks) + (0 if t < segs[0][0] else len(segs) - 1)
+
+    def remap(i: int, t: float) -> int:
+        if i in hook_map:
+            return hook_map[i]
+        return at_seg(t)
+
+    draft.effects = [e.model_copy(update={"clip": remap(e.clip, e.at)}) for e in draft.effects
+                     if 0 <= e.clip < len(old) and e.id not in SHORTENING
+                     and not (e.id == "speed" and float(e.params.get("factor", 1.5)) > 1)]
+    draft.sfx = [s.model_copy(update={"clip": remap(s.clip, s.at)}) for s in draft.sfx if 0 <= s.clip < len(old)]
+    trs = []
+    for tr in draft.transitions:
+        if not 0 <= tr.after_clip < len(old):
+            continue
+        k = hook_map.get(tr.after_clip, at_seg(old[tr.after_clip].src_out - 0.01))
+        if k < len(new) - 1:
+            trs.append(tr.model_copy(update={"after_clip": k}))
+    draft.transitions = trs
+    for m in draft.music:
+        if 0 <= m.from_clip < len(old):
+            m.from_clip = remap(m.from_clip, old[m.from_clip].src_in)
+        if 0 <= m.to_clip < len(old):
+            m.to_clip = remap(m.to_clip, old[m.to_clip].src_out - 0.01)
+    draft.clips = new
+
+
 def content_spec(out: OutputSpec, header: HeaderBand | None) -> OutputSpec:
     """The area the video plays in: the whole frame, or the part below the header band."""
     if header is None:
@@ -532,6 +595,8 @@ def compile_plan(
              for i, c in enumerate(idx.characters)}
 
     draft = draft.model_copy(deep=True)
+    if style.pacing.keep_all:
+        cover_source(draft, idx, style)
     fit_hooks(draft, idx, style)
 
     # sanitize clips

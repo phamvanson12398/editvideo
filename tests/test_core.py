@@ -246,3 +246,26 @@ def to_2k_frames(style):
     from director.plan.frames import to_2k
 
     return to_2k(parse_frames(style.frames, 1280, 720))
+
+
+def test_whole_video_kept_by_default(tmp_path: Path):
+    idx = make_index()
+    D = idx.source.duration
+    style = parse_style("drama dọc 9:16, hook bằng cú twist, cắt nhanh", idx.genre)
+    assert style.pacing.keep_all
+    d = plan_rules(idx, style)[0]
+    from director.agent.planner_rules import DraftEffect
+
+    d.effects.append(DraftEffect(id="timelapse", clip=1, at=d.clips[1].src_in, params={"factor": 6}))
+    plan = compile_plan(d, idx, style, parse_frames(["9:16"], 1280, 720), cache=tmp_path)
+    main = [c for c in plan.clips if c.role not in ("hook", "rewind", "reverse")]
+    assert abs(main[0].src_in) < 1e-3 and abs(main[-1].src_out - D) < 1e-3
+    for a, b in zip(main, main[1:]):  # contiguous: nothing in between is dropped
+        assert abs(a.src_out - b.src_in) < 1e-3
+    assert all(c.speed <= 1.0 for c in main)
+    assert plan.duration >= D - 0.05  # never shorter than the source (the hook only adds)
+
+    for cmd in ("drama, 60 giây", "drama, cắt gọn", "drama, cắt khoảng lặng"):
+        assert not parse_style(cmd).pacing.keep_all, cmd
+    st = parse_style("drama, hook 4-6 giây")
+    assert st.target_duration is None and st.pacing.keep_all  # the hook length is not the video length

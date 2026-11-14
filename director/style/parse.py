@@ -114,15 +114,22 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
     style.description = text
 
     # ---- duration / parts
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*(phút|phut|min|minutes?|p)\b", _plain(text))
+    dur_text = re.sub(r"hook[^,;]*", "", _plain(text))  # "hook 4-6 giây" is the hook length, not the video length
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*(phút|phut|min|minutes?|p)\b", dur_text)
     secs = None
     if m:
         secs = float(m.group(1).replace(",", ".")) * 60
-    m2 = re.search(r"(\d+(?:[.,]\d+)?)\s*(giây|giay|s|sec|seconds?)\b", _plain(text))
+    m2 = re.search(r"(\d+(?:[.,]\d+)?)\s*(giây|giay|s|sec|seconds?)\b", dur_text)
     if m2:
         secs = (secs or 0) + float(m2.group(1).replace(",", "."))
     if secs and 5 <= secs <= 3 * 3600:
         patch["target_duration"] = secs
+    # The whole video is kept unless the user asks to shorten it (a target length or "cắt gọn")
+    if "target_duration" in patch or _has(text, "cắt gọn", "rút gọn", "cắt bớt", "cắt khoảng lặng", "bỏ khoảng lặng",
+                                          "cắt chỗ thừa", "tóm tắt", "làm ngắn", "cho phép cắt"):
+        patch.setdefault("pacing", {})["keep_all"] = False
+    if _has(text, "không cắt", "giữ nguyên", "giữ trọn", "không cắt xén", "đủ thời lượng"):
+        patch.setdefault("pacing", {})["keep_all"] = True
     m = re.search(r"(\d+)\s*(phần|phan|part|parts|tập nhỏ)", _plain(text))
     if m and 1 < int(m.group(1)) <= 20:
         patch["parts"] = int(m.group(1))
@@ -143,9 +150,9 @@ def parse_style(text: str | None, genre: str = "unknown", base: StyleDNA | None 
 
     # ---- pacing
     if _has(text, "cắt nhanh", "nhịp nhanh", "dồn dập", "fast paced"):
-        patch["pacing"] = {"avg_shot_sec": 1.5, "remove_silence_over": 0.22, "keep_pause": 0.06}
+        patch.setdefault("pacing", {}).update({"avg_shot_sec": 1.5, "remove_silence_over": 0.22, "keep_pause": 0.06})
     elif _has(text, "nhịp chậm", "chậm rãi", "từ từ", "slow paced"):
-        patch["pacing"] = {"avg_shot_sec": 4.0, "remove_silence_over": 0.9}
+        patch.setdefault("pacing", {}).update({"avg_shot_sec": 4.0, "remove_silence_over": 0.9})
     if _has(text, "giữ nguyên thoại", "không cắt", "giữ nguyên nội dung", "không bỏ đoạn nào"):
         patch.setdefault("pacing", {}).update({"remove_silence_over": 3.0, "remove_fillers": False, "remove_retakes": False})
     if _has(text, "theo nhịp nhạc", "theo beat", "on beat"):

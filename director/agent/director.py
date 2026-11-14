@@ -207,7 +207,7 @@ USER COMMAND: {command!r}
 {('VARIANT: make this the "' + variant + '" version (chuẩn = balanced, mạnh tay = bold/many effects, an toàn = restrained).') if variant else ''}
 USER TASTE (recent requests, newest first): {prefs or 'none'}
 ON-SCREEN TEXT LANGUAGE: {i18n.name(i18n.resolve(style.text_language, idx.language))} ({i18n.resolve(style.text_language, idx.language)}). Spoken language: {idx.language}.
-TARGET DURATION: {style.target_duration or 'as needed'} s; PARTS: {style.parts}; HOOK: {style.hook.strategy}, hook clip {style.hook.min_sec:g}-{style.hook.max_sec:g} s long, ending after a complete word; no SFX on the jump from the hook back into the story.
+KEEP WHOLE VIDEO: {style.pacing.keep_all} (true = nothing may be cut or sped up: clips must cover the source from 0 to the end in order; you only choose where scenes change and what to add). TARGET DURATION: {style.target_duration or 'as needed'} s; PARTS: {style.parts}; HOOK: {style.hook.strategy}, hook clip {style.hook.min_sec:g}-{style.hook.max_sec:g} s long, ending after a complete word; no SFX on the jump from the hook back into the story.
 CAPTIONS: burned-in subtitles present = {idx.hardsub.present} -> follow captions.if_hardsub = {style.captions.if_hardsub}.
 {('TITLE BAND: a fixed title band sits at the top of the whole video (2ch style). Put a short, catchy episode title (max ~8 characters, in the on-screen text language) in "title"; do not add title_slam/title cards.' + (' Series line: ' + repr(style.header.series) + '.' if style.header.series else '')) if style.header.enabled else ''}
 
@@ -256,6 +256,7 @@ def _rule_revise(plan: EditPlan, idx: VideoIndex, style: StyleDNA, instruction: 
             t = int(m.group(1)) * 60 + int(m.group(2))
             hit = next((c for c in plan.clips if c.start <= t < c.start + c.duration), None)
             if hit is not None:
+                new_style.pacing.keep_all = False  # asked to remove a part: shortening is wanted now
                 keep = [i for i, dc in enumerate(draft.clips) if not (abs(dc.src_in - hit.src_in) < 0.05 and abs(dc.src_out - hit.src_out) < 0.05)]
                 remap = {old: new for new, old in enumerate(keep)}
                 draft.clips = [draft.clips[i] for i in keep]
@@ -302,5 +303,7 @@ Change ONLY what the request needs; keep everything else identical. Return JSON:
 
     data, draft = ask_json(SYSTEM_DIRECTOR, content, validate=validate, effort="high", max_tokens=48000)
     new_style = style.merged(data.get("style_patch") or {})
+    if re.search(r"\b(bỏ|xoá|xóa|cắt|rút gọn|ngắn)\b", instruction.lower()):
+        new_style.pacing.keep_all = False  # the user asked to remove / shorten something
     log(f"AI sửa: {data.get('explain', '')}")
     return draft, new_style

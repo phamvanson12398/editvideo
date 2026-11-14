@@ -21,7 +21,7 @@ director studio            # giao diện web tại http://127.0.0.1:7860
 |---|---|
 | Hiểu video | Nhận thể loại (hoạt hình / người thật), chép lời (Whisper) hoặc đọc sub có sẵn trên hình (OCR), tách thoại khỏi nhạc (Demucs), dò mặt nhân vật (có model riêng cho mặt hoạt hình), gom nhóm nhân vật, đoán cảm xúc từng câu, tìm highlight, chuyển cảnh, beat nhạc, điểm âm thanh bùng nổ |
 | Hiểu lệnh | Đọc lệnh tiếng Việt tự do: khung hình, thời lượng, số phần, kiểu hook, kiểu phụ đề, màu, nhịp, mật độ hiệu ứng, nhạc... |
-| Lập kế hoạch | Cắt khoảng lặng, từ đệm ("ừm", "à"), câu nói hỏng (giữ lần nói sau); chọn hook (twist trước rồi tua ngược "Trước đó..."); nén theo thời lượng; chia phần có cliffhanger; gắn hiệu ứng theo cảm xúc với quy tắc chống lạm dụng |
+| Lập kế hoạch | **Mặc định giữ trọn video, không cắt gì**; chỉ khi bạn yêu cầu rút gọn mới cắt khoảng lặng, từ đệm ("ừm", "à"), câu nói hỏng (giữ lần nói sau); chọn hook (twist trước rồi tua ngược "Trước đó..."); nén theo thời lượng; chia phần có cliffhanger; gắn hiệu ứng theo cảm xúc với quy tắc chống lạm dụng |
 | Khung hình | Mọi tỉ lệ theo lệnh (9:16, 16:9, 4:5, 1:1, 21:9, điện ảnh, 1080x1350...), nhiều khung một lúc; bám mặt nhân vật; **có sẵn sub thì giữ trọn khung + nền mờ để không mất chữ** |
 | Hiệu ứng | Gần 200 mục: chuyển cảnh, camera, tốc độ, 15 kiểu phụ đề, chữ/tiêu đề, hiệu ứng manga (đường tập trung, gân giận, mồ hôi...), màu, phong cách hình, hạt, bố cục, âm thanh, 12 combo theo cảm xúc |
 | Âm thanh | 48 tiếng động tự tổng hợp (không lo bản quyền), nhạc nền tự giảm khi có thoại, tắt nhạc trước câu sốc, chuẩn âm lượng -14 LUFS |
@@ -150,6 +150,12 @@ Tiếng động mặc định ở mức **50%** (nhỏ hơn bản trước kho�
 2. **Studio:** thanh kéo "Âm lượng tiếng động" và "Âm lượng nhạc nền".
 3. **Dòng lệnh:** `--sfx-volume 30`, `--music-volume 70`.
 4. **Ghi trong lệnh phong cách:** "tiếng động 30%", "tiếng động nhỏ thôi", "nhạc nền 60%", "không tiếng động". Dùng được cả khi sửa bằng lời: `3_SUA_BAN_DUNG.bat` → "tiếng động nhỏ hơn".
+
+### Giữ trọn video (mặc định)
+
+Tool **không cắt bỏ đoạn nào và không tua nhanh**: video ra chứa đủ toàn bộ video gốc theo đúng thứ tự, chỉ thêm hiệu ứng, chữ, âm thanh, khung hình. Có hook thì đoạn hook (3–5 giây) là phần **phát lại thêm** ở đầu, nên video ra dài hơn gốc vài giây.
+
+Chỉ cắt khi bạn yêu cầu rõ: ghi thời lượng (`60 giây`, `3 phút`), hoặc `cắt gọn`, `rút gọn`, `cắt khoảng lặng`, hoặc sửa bằng lời `bỏ đoạn 0:40`.
 
 ### Tốc độ
 
